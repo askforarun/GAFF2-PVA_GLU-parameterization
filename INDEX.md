@@ -67,7 +67,7 @@
 **Output:** `PVA{n}_trim.pdb`
 
 Build a PVA polymer using fixed bond lengths and tetrahedral angles.
-Structure: `CH3-(CH2-CHOH-CH2)n-CH3`
+Structure: `CH3-(CH2-CHOH-CH2)n-CH3` (cap=True) or `(CH2-CHOH-CH2)n` (cap=False)
 
 See: [PARAMETRIZATION_STEPS.md](PARAMETRIZATION_STEPS.md#step-1-hard-coded-pva-geometry)
 

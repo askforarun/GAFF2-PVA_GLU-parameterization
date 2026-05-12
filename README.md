@@ -23,7 +23,11 @@ The parametrization workflow converts a hard-coded PVA polymer structure into a 
 **Function:** `build_pva(n, output_file, cap=False)`
 
 **Description:**
-Builds a PVA polymer chain with the structure: `CH3-(CH2-CHOH-CH2)n-CH3`
+Builds a PVA polymer chain with fixed geometry.
+
+**Structure:**
+- **With `cap=True`:** `CH3-(CH2-CHOH-CH2)n-CH3` (capped with terminal methyl groups)
+- **With `cap=False`:** `(CH2-CHOH-CH2)n` (uncapped/trimmed backbone only)
 
 The geometry is **hard-coded** (no external minimization), using:
 - Fixed bond lengths (C-C: ~1.54 Å, C-O: ~1.42 Å, C-H: ~1.09 Å)
@@ -32,7 +36,7 @@ The geometry is **hard-coded** (no external minimization), using:
 
 **Key Parameters:**
 - `n`: Number of CH2-CHOH-CH2 repeat units (typical: 3–25 monomers)
-- `cap`: If `False`, generates uncapped structure (removes final 8 atoms/terminal CH3 groups)
+- `cap`: If `True`, generates capped structure with CH3 terminals; if `False`, generates uncapped backbone (removes terminal CH3 groups)
 - `output_file`: Output PDB file name (default: `PVA{n}.pdb` or `PVA{n}_trim.pdb`)
 
 **Example Usage:**

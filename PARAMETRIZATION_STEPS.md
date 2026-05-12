@@ -88,12 +88,15 @@
 ```python
 def build_pva(n: int, output_file: str = None, cap: bool = True):
     """
-    Build PVA polymer: CH3-(CH2-CHOH-CH2)n-CH3
+    Build PVA polymer with optional capping.
+    
+    Structure with cap=True:  CH3-(CH2-CHOH-CH2)n-CH3
+    Structure with cap=False: (CH2-CHOH-CH2)n
     
     Args:
         n: Number of repeat units (e.g., 7)
         output_file: Output PDB filename (default: PVA{n}.pdb or PVA{n}_trim.pdb)
-        cap: If False, removes terminal CH3 groups (produces uncapped structure)
+        cap: If True, includes terminal CH3 groups; if False, produces uncapped backbone
     
     Returns:
         tuple: (atoms list, bonds dict)
@@ -107,10 +110,11 @@ def build_pva(n: int, output_file: str = None, cap: bool = True):
 
 **Structure:**
 ```
-CH3-(CH2-CHOH-CH2)-(CH2-CHOH-CH2)-...-CH3
+With cap=True:  CH3-(CH2-CHOH-CH2)-(CH2-CHOH-CH2)-...-CH3
+With cap=False: (CH2-CHOH-CH2)-(CH2-CHOH-CH2)-...
  ↓
-Repeat unit: C-H-H-C-H-O-H-C-H-H (per 3n+2 carbon backbone)
-Terminal:    CH3 at each end
+Repeat unit: C-H-H-C-H-O-H-C-H-H (per repeat unit in backbone)
+Terminal:    CH3 at each end (only if cap=True)
 ```
 
 **Example Output (PVA7_trim.pdb):**
