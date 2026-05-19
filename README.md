@@ -70,17 +70,13 @@ Unlike PVA (which is generated algorithmically), the **pre-polymerized** glutara
 - **Tetrafunctional connectivity:** Each GLU molecule serves as one junction node
 - **Pre-minimized geometry:** Ensures consistent charges and conformations across all jobs
 
-**Variants:**
+**Form:**
 
-1. **Saturated (fully bonded, no reactive sites):** `charge_data/glutaraldehyde.pdb`
-   - Used for charge extraction and analysis
-   - Has hydrogen atoms on all junction carbons
-   - For reference only in charge/structural analysis
-   
-2. **Activated (reactive for crosslinking):** Derived by removing H atoms from junction carbons
-   - Used in actual network construction (genhydrogel.py)
-   - Defines the four reactive sites for C–C bonding with PVA strand ends
-   - One H removed per junction carbon = 4 reactive sites total
+- **Unsaturated (reactive for crosslinking):** `charge_data/glutaraldehyde.pdb`
+  - Used in actual network construction (genhydrogel.py)
+  - Has H atoms removed from junction carbons
+  - Defines the four reactive sites for C–C bonding with PVA strand ends
+  - One H removed per junction carbon = 4 reactive sites total
 
 **Usage:**
 If parametrizing GLU separately, use the pre-minimized structure directly with Antechamber:
@@ -93,10 +89,8 @@ EOF
 ```
 
 **Important Notes:**
-1. **Pre-extracted charges are for unsaturated GLU:** The charges in `glutaraldehyde_charges.txt` are extracted for the **unsaturated form** (reactive junction carbons with H removed), but retain 31 total atoms.
-2. **Saturated vs. Unsaturated:** 
-   - **Saturated** (in `glutaraldehyde.pdb`): Reference structure with explicit H on all junction carbons — used for parametrization
-   - **Unsaturated** (in `glutaraldehyde_charges.txt`): Charges for reactive form with H removed from junction carbons — used in network construction
+1. **`glutaraldehyde.pdb` is the unsaturated form:** This structure has H atoms removed from the four reactive junction carbons to enable C–C bonding with PVA strand ends.
+2. **Charges extracted from crosslinked structure:** The pre-extracted charges in `glutaraldehyde_charges.txt` are extracted from `charge_data/crosslinked_struct.mol2` (the minimized PVA–GLU crosslink motif), not directly from the standalone GLU structure. This ensures the charges reflect the chemical environment in the actual crosslinked network.
 3. **For most workflows, skip this step:** Use pre-extracted GLU charges from `charge_data/glutaraldehyde_charges.txt` directly (Step 3).
 
 ---
@@ -529,10 +523,11 @@ echo "  LAMMPS parm: pva_glu_large.parm"
 3. **Charge loading scales automatically**: `load_system_charges(n_pva=300, n_glu=150)` returns all charges needed
 4. **Combined PDB**: Use Packmol or similar tool to generate `combined_large.pdb` with all molecules positioned
 
-**Note on Saturated vs. Unsaturated GLU:**
-- The parametrized topology (`glutaraldehyde.top`) is derived from the **saturated reference structure** (`charge_data/glutaraldehyde.pdb`)
-- The pre-extracted charges (`glutaraldehyde_charges.txt`) are for the **unsaturated form** used in actual network construction
-- Both maintain 31 atoms; the difference is in which hydrogens are explicitly present (junction carbons have H in saturated, removed in unsaturated for reactivity)
+**GLU Structure Note:**
+- **`glutaraldehyde.pdb`** is the **unsaturated (reactive) form** with H atoms removed from junction carbons
+- The parametrized topology (`glutaraldehyde.top`) and charges (`glutaraldehyde_charges.txt`) are derived from this unsaturated structure
+- This form is used for parametrization and actual network construction with reactive sites for C–C bonding
+- Maintains 31 total atoms (carbons, hydrogens, and oxygens)
 
 ---
 
