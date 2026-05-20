@@ -1,185 +1,228 @@
 #!/usr/bin/env python3
-"""
-Example script demonstrating the three-step PVA parametrization pipeline:
-  Step 1: Build PVA with hard-coded geometry
-  Step 2: Parametrize with GAFF2 (Antechamber + Parmchk2)
-  Step 3: Assign pre-extracted partial charges
+"""Example GAFF2 parametrization workflow for PVA-GLU systems.
+
+The script is intentionally explicit so manuscript systems can be regenerated
+with a chosen PVA chain length and molecule counts. It builds and parametrizes
+PVA, parametrizes the GLU reference, writes corrected ``*_mod`` MOL2/FRCMOD/TOP
+files, loads the pre-extracted charge array, and optionally converts a combined
+PDB to LAMMPS format.
 """
 
-import os
+from __future__ import annotations
+
+import argparse
+import subprocess
 import sys
 from pathlib import Path
 
-# Add current directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent))
+# Add current directory to path for imports when run as a script.
+REPO_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(REPO_ROOT))
 
+from molecular_utils import getfiles, load_system_charges, run_tleap_with_error_check
 from pva_builder import build_pva
-from molecular_utils import getfiles, load_system_charges
+from system_constants import GLU_ATOMS_PER_MOLECULE, PVA_ATOMS_PER_MONOMER
 
 
-def main():
-    """Run the three-step parametrization pipeline."""
+def parse_args() -> argparse.Namespace:
+    """Parse command-line options for one manuscript system."""
+    parser = argparse.ArgumentParser(
+        description="Build and parameterize one PVA-GLU system with GAFF2.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--chain-length",
+        type=int,
+        default=17,
+        help="Number of PVA monomers per chain. Manuscript values: 17, 21, 25.",
+    )
+    parser.add_argument(
+        "--n-pva",
+        type=int,
+        default=2,
+        help="Number of PVA chains represented in the charge array / combined PDB.",
+    )
+    parser.add_argument(
+        "--n-glu",
+        type=int,
+        default=1,
+        help="Number of GLU molecules represented in the charge array / combined PDB.",
+    )
+    parser.add_argument(
+        "--combined-pdb",
+        type=Path,
+        default=None,
+        help="Optional combined PDB containing PVA and GLU molecules for LAMMPS conversion.",
+    )
+    parser.add_argument(
+        "--output-prefix",
+        default=None,
+        help="Prefix for LAMMPS outputs when --combined-pdb is provided.",
+    )
+    return parser.parse_args()
 
-    print("=" * 70)
-    print("PVA GAFF2 Parametrization Pipeline")
-    print("=" * 70)
 
-    # Configuration
-    chain_length = 7          # Number of PVA monomers per chain
-    n_pva = 2                 # Number of PVA chains
-    n_glu = 1                 # Number of GLU molecules
+def run_checked(command: list[str]) -> None:
+    """Run an external command and fail fast if it returns a non-zero status."""
+    subprocess.run(command, check=True)
 
-    print(f"\nConfiguration:")
-    print(f"  Chain length:    {chain_length} monomers per PVA chain")
-    print(f"  PVA chains:      {n_pva}")
-    print(f"  GLU molecules:   {n_glu}")
-    print()
 
-    # =========================================================================
-    # STEP 1: Build PVA structure with hard-coded geometry
-    # =========================================================================
-    print("─" * 70)
-    print("STEP 1: Build PVA with Hard-Coded Geometry")
-    print("─" * 70)
-    print(f"Module: pva_builder.py")
-    print(f"Function: build_pva(n={chain_length}, cap=False)")
-    print()
+def apply_atom_type_corrections(input_mol2: Path, output_mol2: Path, replacements: dict[str, str]) -> None:
+    """Write a corrected MOL2 file using the same replacements as genhydrogel.py."""
+    content = input_mol2.read_text()
+    for old, new in replacements.items():
+        content = content.replace(old, new)
+    output_mol2.write_text(content)
 
-    try:
-        output_file = f"PVA{chain_length}_trim.pdb"
-        atoms, bonds = build_pva(
-            n=chain_length,
-            output_file=output_file,
-            cap=False
+
+def run_parmchk2(mol2_file: Path, frcmod_file: Path) -> None:
+    """Generate an FRCMOD file from a corrected MOL2 file."""
+    run_checked(["parmchk2", "-i", str(mol2_file), "-o", str(frcmod_file), "-f", "mol2", "-a", "Y"])
+
+
+def run_tleap_for_modified_mol2(base: Path) -> None:
+    """Generate AMBER topology and coordinates for a corrected MOL2/FRCMOD pair."""
+    tleap_input = Path(f"tleap_{base.name}.in")
+    tleap_input.write_text(
+        "\n".join(
+            [
+                "source leaprc.gaff2",
+                f"MOL = loadmol2 {base}.mol2",
+                "check MOL",
+                f"loadamberparams {base}.frcmod",
+                f"saveamberparm MOL {base}.top {base}.crd",
+                "quit",
+            ]
         )
-        print(f"✓ Successfully built PVA structure")
-        print(f"  Output file: {output_file}")
-        print(f"  Total atoms: {len(atoms)}")
-        print(f"  Total bonds: {sum(len(b) for b in bonds.values()) // 2}")
-        print()
-        print(f"  Structure: CH3-(CH2-CHOH-CH2)×{chain_length}")
-        print(f"  Geometry: Hard-coded (fixed bond lengths & angles)")
-        print(f"  Status: NOT minimized (scaffold for parametrization)")
-        print()
-    except Exception as e:
-        print(f"✗ Error in Step 1: {e}")
-        return False
+    )
+    run_tleap_with_error_check(str(tleap_input))
 
-    # =========================================================================
-    # STEP 2: Parametrize with GAFF2
-    # =========================================================================
-    print("─" * 70)
-    print("STEP 2: Parametrize with GAFF2 (Antechamber + Parmchk2)")
-    print("─" * 70)
-    print(f"Module: molecular_utils.py")
-    print(f"Function: getfiles('{output_file}')")
-    print()
-    print("Process:")
-    print(f"  1. Antechamber → Assigns GAFF2 atom types and initial charges")
-    print(f"  2. Parmchk2 → Fills in missing force field parameters")
-    print(f"  3. tLeap → Generates AMBER topology")
-    print()
+
+def parameterize_and_correct_pva(chain_length: int) -> tuple[Path, Path]:
+    """Build, parameterize, and write corrected PVA files."""
+    pva_pdb = Path(f"PVA{chain_length}_trim.pdb")
+    atoms, bonds = build_pva(n=chain_length, output_file=str(pva_pdb), cap=False)
+    print(f"Built {pva_pdb} with {len(atoms)} atoms and {sum(len(b) for b in bonds.values()) // 2} bonds")
+
+    getfiles(str(pva_pdb))
+    pva_base = pva_pdb.with_suffix("")
+    pva_mod_base = Path(f"{pva_base}_mod")
+    apply_atom_type_corrections(
+        pva_base.with_suffix(".mol2"),
+        pva_mod_base.with_suffix(".mol2"),
+        {"ha": "hc", "c2": "c3"},
+    )
+    run_parmchk2(pva_mod_base.with_suffix(".mol2"), pva_mod_base.with_suffix(".frcmod"))
+    run_tleap_for_modified_mol2(pva_mod_base)
+    return pva_pdb, pva_mod_base
+
+
+def parameterize_and_correct_glu() -> Path:
+    """Parameterize the GLU reference and write corrected GLU files."""
+    glu_pdb = Path("charge_data/glutaraldehyde.pdb")
+    if not glu_pdb.exists():
+        raise FileNotFoundError(f"Missing GLU reference structure: {glu_pdb}")
+
+    getfiles(str(glu_pdb))
+    glu_base = glu_pdb.with_suffix("")
+    glu_mod_base = glu_base.with_name(f"{glu_base.name}_mod")
+    apply_atom_type_corrections(
+        glu_base.with_suffix(".mol2"),
+        glu_mod_base.with_suffix(".mol2"),
+        {"c2": "c6", "h4": "h1"},
+    )
+    run_parmchk2(glu_mod_base.with_suffix(".mol2"), glu_mod_base.with_suffix(".frcmod"))
+    run_tleap_for_modified_mol2(glu_mod_base)
+    return glu_mod_base
+
+
+def maybe_convert_to_lammps(args: argparse.Namespace, pva_mod_base: Path, glu_mod_base: Path) -> None:
+    """Convert to LAMMPS only when the user provides a combined PDB."""
+    output_prefix = args.output_prefix or f"pva{args.chain_length}_glu"
+    data_file = f"{output_prefix}.lammps"
+    param_file = f"{output_prefix}_parm.lammps"
+
+    if args.combined_pdb is None:
+        print("\nLAMMPS conversion skipped: no --combined-pdb was provided.")
+        print("To convert later, provide a combined PDB with molecules ordered as:")
+        print(f"  {args.n_pva} x PVA{args.chain_length}_trim_mod, then {args.n_glu} x glutaraldehyde_mod")
+        print("Example:")
+        print(
+            "  python example_parametrization.py "
+            f"--chain-length {args.chain_length} --n-pva {args.n_pva} --n-glu {args.n_glu} "
+            "--combined-pdb combined.pdb"
+        )
+        return
+
+    if not args.combined_pdb.exists():
+        raise FileNotFoundError(f"Combined PDB not found: {args.combined_pdb}")
+
+    from amber_to_lammps import amber2lammps
+
+    amber2lammps(
+        data_file=data_file,
+        param_file=param_file,
+        topologies=[str(pva_mod_base.with_suffix(".top")), str(glu_mod_base.with_suffix(".top"))],
+        molecule_counts=[args.n_pva, args.n_glu],
+        pdb_file=str(args.combined_pdb),
+        charges_target=[0, 0],
+        verbose=True,
+    )
+    print(f"\nLAMMPS conversion complete: {data_file}, {param_file}")
+
+
+def main() -> bool:
+    """Run the parametrization workflow for one selected chain length."""
+    args = parse_args()
+
+    print("=" * 70)
+    print("PVA-GLU GAFF2 Parametrization Example")
+    print("=" * 70)
+    print("\nConfiguration:")
+    print(f"  Chain length:    {args.chain_length} monomers per PVA chain")
+    print(f"  PVA chains:      {args.n_pva}")
+    print(f"  GLU molecules:   {args.n_glu}")
+    print(f"  Combined PDB:    {args.combined_pdb or 'not provided'}")
 
     try:
-        print(f"Running Antechamber, Parmchk2, and tLeap...")
-        getfiles(output_file)
+        print("\nSTEP 1-2: Build and parameterize corrected PVA")
+        pva_pdb, pva_mod_base = parameterize_and_correct_pva(args.chain_length)
 
-        base_name = output_file.replace(".pdb", "")
-        print()
-        print(f"✓ Successfully parametrized PVA")
-        print(f"  Output files:")
-        print(f"    - {base_name}.mol2       (Parametrized structure in MOL2 format)")
-        print(f"    - {base_name}.frcmod     (Force field corrections)")
-        print(f"    - {base_name}.top        (AMBER topology file)")
-        print(f"    - {base_name}.crd        (AMBER coordinate file)")
-        print()
-        print(f"  Force field: GAFF2 (General AMBER Force Field v2)")
-        print(f"  Status: Complete parameters (bonds, angles, dihedrals)")
-        print()
-    except Exception as e:
-        print(f"✗ Error in Step 2: {e}")
-        print(f"  Note: Requires AmberTools (Antechamber, Parmchk2, tLeap)")
-        print(f"  Install: conda install -c conda-forge ambertools")
-        return False
+        print("\nSTEP 3: Parameterize corrected GLU reference")
+        glu_mod_base = parameterize_and_correct_glu()
 
-    # =========================================================================
-    # STEP 3: Load pre-extracted partial charges
-    # =========================================================================
-    print("─" * 70)
-    print("STEP 3: Assign Pre-Extracted Partial Charges")
-    print("─" * 70)
-    print(f"Module: molecular_utils.py")
-    print(f"Function: load_system_charges({chain_length}, {n_pva}, {n_glu})")
-    print()
-    print("Reference Data:")
-    print(f"  - charge_data/PVA_monomercharges.txt      (from PVA7_min.pdb)")
-    print(f"  - charge_data/glutaraldehyde_charges.txt  (from GLU reference)")
-    print()
-
-    try:
+        print("\nSTEP 4: Load pre-extracted partial charges")
         charges = load_system_charges(
-            chain_length=chain_length,
-            n_pva=n_pva,
-            n_glu=n_glu
+            chain_length=args.chain_length,
+            n_pva=args.n_pva,
+            n_glu=args.n_glu,
         )
+        pva_total_atoms = args.chain_length * PVA_ATOMS_PER_MONOMER * args.n_pva
+        glu_total_atoms = args.n_glu * GLU_ATOMS_PER_MOLECULE
+        print(f"Loaded {len(charges)} charges")
+        print(f"  PVA atoms: {pva_total_atoms}")
+        print(f"  GLU atoms: {glu_total_atoms}")
+        print(f"  Net charge: {sum(charges):.5f}")
 
-        print(f"✓ Successfully loaded partial charges")
-        print(f"  Total atoms: {len(charges)}")
-        print(f"  Breakdown:")
+        print("\nGenerated corrected topology inputs:")
+        print(f"  PVA PDB:        {pva_pdb}")
+        print(f"  PVA MOL2:       {pva_mod_base.with_suffix('.mol2')}")
+        print(f"  PVA FRCMOD:     {pva_mod_base.with_suffix('.frcmod')}")
+        print(f"  PVA topology:   {pva_mod_base.with_suffix('.top')}")
+        print(f"  GLU MOL2:       {glu_mod_base.with_suffix('.mol2')}")
+        print(f"  GLU FRCMOD:     {glu_mod_base.with_suffix('.frcmod')}")
+        print(f"  GLU topology:   {glu_mod_base.with_suffix('.top')}")
 
-        # Calculate component sizes
-        pva_atoms_per_monomer = 10  # From system_constants
-        glu_atoms_per_molecule = 18  # From charge_data
+        print("\nSTEP 5: Optional AMBER-to-LAMMPS conversion")
+        maybe_convert_to_lammps(args, pva_mod_base, glu_mod_base)
 
-        pva_total_atoms = chain_length * pva_atoms_per_monomer * n_pva
-        glu_total_atoms = n_glu * glu_atoms_per_molecule
-
-        print(f"    - PVA atoms: {pva_total_atoms} ({n_pva} chains × {chain_length} monomers × {pva_atoms_per_monomer} atoms/monomer)")
-        print(f"    - GLU atoms: {glu_total_atoms} ({n_glu} molecules × {glu_atoms_per_molecule} atoms/molecule)")
-        print()
-
-        # Show sample charges
-        print(f"  Sample charges (first 5 atoms, 3 PVA atoms, 2 GLU atoms):")
-        for i, charge in enumerate(charges[:5]):
-            if i < 3:
-                print(f"    Atom {i+1:2d} (PVA): {charge:8.5f}")
-            else:
-                print(f"    Atom {i+1:2d} (GLU): {charge:8.5f}")
-
-        # Calculate net charge
-        net_charge = sum(charges)
-        print(f"  Net system charge: {net_charge:.5f} (should be ≈0.0)")
-        print()
-
-        print(f"  Charge source: Pre-extracted from minimized reference (PVA7_min.pdb)")
-        print(f"  Status: Consistent across all jobs in workflow")
-        print()
-
-    except Exception as e:
-        print(f"✗ Error in Step 3: {e}")
+    except Exception as exc:
+        print(f"\nError: {exc}")
         return False
 
-    # =========================================================================
-    # Summary
-    # =========================================================================
-    print("─" * 70)
-    print("PIPELINE COMPLETE")
-    print("─" * 70)
-    print()
-    print(f"✓ Step 1: Built PVA structure ({output_file})")
-    print(f"✓ Step 2: Parametrized with GAFF2 (.mol2, .frcmod, .top, .crd)")
-    print(f"✓ Step 3: Loaded {len(charges)} pre-extracted partial charges")
-    print()
-    print("The system is now ready for:")
-    print(f"  - AMBER→LAMMPS conversion (amber_to_lammps.py)")
-    print(f"  - LAMMPS compression and crosslinking simulations")
-    print(f"  - Full hydrogel MD workflow (hydrogel_signac.py)")
-    print()
-    print("=" * 70)
-
+    print("\nPipeline complete.")
     return True
 
 
 if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
+    sys.exit(0 if main() else 1)

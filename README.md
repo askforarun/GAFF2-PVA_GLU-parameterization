@@ -57,23 +57,80 @@ Clone the repository, install the required tools, and run the example:
 git clone https://github.com/askforarun/GAFF2-PVA-parameterization.git
 cd GAFF2-PVA-parameterization
 conda activate AmberTools25
-python example_parametrization.py
+python example_parametrization.py --chain-length 17 --n-pva 2 --n-glu 1
+```
+
+The example is a command-line workflow for one selected chain length. For the
+manuscript systems, run the script separately for each chain length:
+
+```bash
+python example_parametrization.py --chain-length 17 --n-pva 300 --n-glu 150
+python example_parametrization.py --chain-length 21 --n-pva 300 --n-glu 150
+python example_parametrization.py --chain-length 25 --n-pva 300 --n-glu 150
+```
+
+For each run, the script builds `PVA{n}_trim.pdb`, writes corrected
+`PVA{n}_trim_mod.*` files, parametrizes the GLU reference, writes corrected
+`charge_data/glutaraldehyde_mod.*` files, and loads the corresponding charge
+array for the requested `--n-pva` and `--n-glu`.
+
+LAMMPS conversion is optional because it requires a combined PDB with molecules
+in the same order as the topology/count inputs. Representative packed systems
+from the `hydrogel_simulation` workspace are included here as:
+
+- `combined_pva17.pdb` - `n=17`, `n_pva=300`, `n_glu=150`, 55,650 atoms
+- `combined_pva21.pdb` - `n=21`, `n_pva=300`, `n_glu=150`, 67,650 atoms
+- `combined_pva25.pdb` - `n=25`, `n_pva=300`, `n_glu=150`, 79,650 atoms
+
+These PDB files were copied from representative replica-1
+`hydrogel_simulation/workspace/*/packed_system.pdb` files. They contain packed,
+uncrosslinked starting configurations with molecules ordered as 300 PVA chains
+followed by 150 GLU molecules. This ordering must match the topology order
+passed to `amber_to_lammps.py`: first `PVA{n}_trim_mod.top`, then
+`charge_data/glutaraldehyde_mod.top`.
+
+The atom counts follow:
+
+- `n=17`: `300 * 170 + 150 * 31 = 55,650`
+- `n=21`: `300 * 210 + 150 * 31 = 67,650`
+- `n=25`: `300 * 250 + 150 * 31 = 79,650`
+
+To convert in the same run:
+
+```bash
+python example_parametrization.py --chain-length 17 --n-pva 300 --n-glu 150 \
+  --combined-pdb combined_pva17.pdb --output-prefix pva17_glu
+
+python example_parametrization.py --chain-length 21 --n-pva 300 --n-glu 150 \
+  --combined-pdb combined_pva21.pdb --output-prefix pva21_glu
+
+python example_parametrization.py --chain-length 25 --n-pva 300 --n-glu 150 \
+  --combined-pdb combined_pva25.pdb --output-prefix pva25_glu
+```
+
+You can also point `--combined-pdb` at a packed system from the
+`hydrogel_simulation` workspace without copying it into this repository:
+
+```bash
+python example_parametrization.py --chain-length 17 --n-pva 300 --n-glu 150 \
+  --combined-pdb /users/ass2009/sharedscratch/hydrogel_simulation/workspace/<JOB_ID>/packed_system.pdb \
+  --output-prefix pva17_glu
 ```
 
 You can also run the first two steps manually:
 
 ```bash
-python pva_builder.py --n 7 --no-cap
-python -c "from molecular_utils import getfiles; getfiles('PVA7_trim.pdb')"
+python pva_builder.py --n 17 --no-cap
+python -c "from molecular_utils import getfiles; getfiles('PVA17_trim.pdb')"
 ```
 
 This generates files such as:
 
-- `PVA7_trim.pdb`
-- `PVA7_trim.mol2`
-- `PVA7_trim.frcmod`
-- `PVA7_trim.top`
-- `PVA7_trim.crd`
+- `PVA17_trim.pdb`
+- `PVA17_trim.mol2`
+- `PVA17_trim.frcmod`
+- `PVA17_trim.top`
+- `PVA17_trim.crd`
 
 ## Dependencies
 
@@ -107,6 +164,8 @@ charges used by the workflow:
 - `PVA7_min.pdb` and `PVA7_min.mol2` - minimized PVA reference data
 - `glutaraldehyde.pdb` - unsaturated tetrafunctional GLU crosslinker structure
   derived from `charge_data/crosslinked_struct_min.mol2`
+- `glutaraldehyde_mod.mol2` - GLU MOL2 with manual atom-type corrections
+  applied (`c2 -> c6`, `h4 -> h1`)
 - `crosslinked_struct_min.pdb` and `crosslinked_struct_min.mol2` - crosslink motif reference data
 - `extract_charges.py` - utility for regenerating charge text files
 
@@ -131,9 +190,9 @@ After generating AMBER topology files and preparing a combined PDB, convert the
 system with:
 
 ```bash
-python amber_to_lammps.py system.lammps parm.lammps combined.pdb \
-  -t PVA7_trim.top charge_data/glutaraldehyde.top \
-  -c 1 1 \
+python amber_to_lammps.py pva17_glu.lammps pva17_glu_parm.lammps combined_pva17.pdb \
+  -t PVA17_trim_mod.top charge_data/glutaraldehyde_mod.top \
+  -c 300 150 \
   --charges 0 0 \
   --verbose
 ```
@@ -160,9 +219,9 @@ root, including:
 - `*.frcmod`
 - `*.top`
 - `*.crd`
-- `combined.pdb`
-- `system.lammps`
-- `parm.lammps`
+- `combined_pva*.pdb`
+- `pva*_glu.lammps`
+- `pva*_glu_parm.lammps`
 
 For production work, consider running examples in a separate working directory
 or adding project-specific ignore rules for generated files you do not intend to
@@ -178,6 +237,10 @@ GAFF2-PVA-parameterization/
 |-- genhydrogel.py
 |-- system_constants.py
 |-- example_parametrization.py
+|-- combined_pva17.pdb
+|-- combined_pva21.pdb
+|-- combined_pva25.pdb
+|-- PVA17_trim_mod.mol2
 |-- charge_data/
 |   |-- PVA_monomercharges.txt
 |   |-- PVA_terminal_group_charges.txt
@@ -185,6 +248,7 @@ GAFF2-PVA-parameterization/
 |   |-- PVA7_min.pdb
 |   |-- PVA7_min.mol2
 |   |-- glutaraldehyde.pdb
+|   |-- glutaraldehyde_mod.mol2
 |   |-- crosslinked_struct_min.pdb
 |   |-- crosslinked_struct_min.mol2
 |   `-- extract_charges.py
