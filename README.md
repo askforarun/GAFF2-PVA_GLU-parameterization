@@ -89,6 +89,10 @@ followed by 150 GLU molecules. This ordering must match the topology order
 passed to `amber_to_lammps.py`: first `PVA{n}_trim_mod.top`, then
 `charge_data/glutaraldehyde_mod.top`.
 
+You can also generate your own combined PDB with Packmol. Use the same molecule
+counts and ordering that you pass to `amber_to_lammps.py`, otherwise the atom
+count and topology checks will fail.
+
 The atom counts follow:
 
 - `n=17`: `300 * 170 + 150 * 31 = 55,650`
