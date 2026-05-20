@@ -1,566 +1,202 @@
-# GAFF2 PVA–GLU Parameterization Pipeline
+# GAFF2 PVA-GLU Parameterization
 
-This repository contains the complete parametrization workflow for PVA (Polyvinyl Alcohol) and GLU (Glutaraldehyde) using GAFF2 force field. The pipeline consists of four main stages, converting hard-coded molecular structures to fully parametrized LAMMPS-ready systems.
+This repository contains a GAFF2-based parametrization workflow for PVA
+(polyvinyl alcohol) chains and GLU (glutaraldehyde) crosslinker building blocks
+used in PVA-GLU hydrogel molecular dynamics workflows.
 
-## Overview
+The core workflow builds PVA structures, generates AMBER/GAFF2 parameters with
+AmberTools, loads pre-extracted reference charges, and can convert AMBER
+topologies into LAMMPS data/parameter files.
 
-The parametrization workflow converts hard-coded PVA polymer and GLU crosslinker structures into fully parametrized LAMMPS-compatible systems with GAFF2 force field parameters and pre-extracted partial charges.
+## Start Here
 
-### Four Main Steps (+ Optional GLU Preparation)
+- [INSTALL.md](INSTALL.md) - installation and environment setup
+- [INDEX.md](INDEX.md) - repository map and quick command reference
+- [PARAMETRIZATION_STEPS.md](PARAMETRIZATION_STEPS.md) - detailed workflow notes
+- [SETUP_GUIDE.md](SETUP_GUIDE.md) - usage and troubleshooting guide
+- [TLEAP_GUIDE.md](TLEAP_GUIDE.md) - tLeap-specific notes
 
-| Step | Module | Input | Output | Purpose |
-|------|--------|-------|--------|---------|
-| **1. Build PVA with hard-coded geometry** | `pva_builder.py` | Chain length `n` | `PVA{n}_trim.pdb` | Generate uncapped PVA chain using fixed bond lengths and tetrahedral angles |
-| **1b. (Optional) Prepare GLU crosslinker** | Pre-minimized files | `glutaraldehyde.pdb` | `.mol2`, `.frcmod`, `.prmtop` (if needed) | Prepare tetrafunctional GLU crosslinker for parametrization |
-| **2. Run Antechamber + Parmchk2** | `molecular_utils.py::getfiles()` | PVA and/or GLU PDB | `.mol2`, `.frcmod`, `.prmtop` | Assign GAFF2 atom types, generate force field parameters (bonds, angles, dihedrals) |
-| **3. Assign pre-extracted charges** | `molecular_utils.py::load_system_charges()` | Reference charges files | Per-atom partial charges | Reuse charges from minimized references (PVA7_min.pdb, glutaraldehyde.pdb) |
-| **4. Convert to LAMMPS format** | `amber_to_lammps.py` | `.prmtop` files + combined PDB | `system.lammps`, `parm.lammps` | Convert AMBER topology to LAMMPS data and parameter files for MD simulation |
-
----
-
-## Step 1: Build PVA with Hard-Coded Geometry
-
-**File:** `pva_builder.py`
-
-**Function:** `build_pva(n, output_file, cap=False)`
-
-**Description:**
-Builds a PVA polymer chain with fixed geometry.
-
-**Structure:**
-- **With `cap=True`:** `CH3-(CH2-CHOH-CH2)n-CH3` (capped with terminal methyl groups)
-- **With `cap=False`:** `(CH2-CHOH-CH2)n` (uncapped/trimmed backbone only)
-
-The geometry is **hard-coded** (no external minimization), using:
-- Fixed bond lengths (C-C: ~1.54 Å, C-O: ~1.42 Å, C-H: ~1.09 Å)
-- Tetrahedral angles (109.47°)
-- Van der Waals-based dihedral placement
-
-**Key Parameters:**
-- `n`: Number of CH2-CHOH-CH2 repeat units (typical: 3–25 monomers)
-- `cap`: If `True`, generates capped structure with CH3 terminals; if `False`, generates uncapped backbone (removes terminal CH3 groups)
-- `output_file`: Output PDB file name (default: `PVA{n}.pdb` or `PVA{n}_trim.pdb`)
-
-**Example Usage:**
-```bash
-python3 << 'EOF'
-from pva_builder import build_pva
-atoms, bonds = build_pva(n=7, output_file="PVA7_trim.pdb", cap=False)
-print(f"Built PVA with {len(atoms)} atoms")
-EOF
-```
-
-**Output:**
-- `PVA{n}_trim.pdb` — Uncapped PVA structure (ready for Antechamber)
-- Contains CONECT records for bond information
-
-**Note:** This structure is NOT minimized; it's a scaffold for subsequent parametrization.
-
----
-
-## Step 1b: Prepare Pre-Polymerized Glutaraldehyde (GLU) Crosslinker (Optional)
-
-**File:** Pre-minimized structure available in `charge_data/glutaraldehyde.pdb`
-
-**Description:**
-Unlike PVA (which is generated algorithmically), the **pre-polymerized** glutaraldehyde crosslinker is a tetrafunctional molecule provided as a minimized reference structure. This is not monomeric glutaraldehyde, but a condensed oligomeric form designed to function as an ideal four-branch junction in the network.
-
-**Structure:**
-- **Pre-polymerized tetramer:** 4 reactive junction carbons that connect to PVA strand ends
-- **Tetrafunctional connectivity:** Each GLU molecule serves as one junction node
-- **Pre-minimized geometry:** Ensures consistent charges and conformations across all jobs
-
-**Form:**
-
-- **Unsaturated (reactive for crosslinking):** `charge_data/glutaraldehyde.pdb`
-  - Used in actual network construction (genhydrogel.py)
-  - Has H atoms removed from junction carbons
-  - Defines the four reactive sites for C–C bonding with PVA strand ends
-  - One H removed per junction carbon = 4 reactive sites total
-
-**Usage:**
-If parametrizing GLU separately, use the pre-minimized structure directly with Antechamber:
-```bash
-python3 << 'EOF'
-from molecular_utils import getfiles
-getfiles("charge_data/glutaraldehyde.pdb")
-# Generates: glutaraldehyde.mol2, glutaraldehyde.frcmod, glutaraldehyde.prmtop
-EOF
-```
-
-**Important Notes:**
-1. **`glutaraldehyde.pdb` is the unsaturated form:** This structure has H atoms removed from the four reactive junction carbons to enable C–C bonding with PVA strand ends.
-2. **Charges extracted from crosslinked structure:** The pre-extracted charges in `glutaraldehyde_charges.txt` are extracted from `charge_data/crosslinked_struct.mol2` (the minimized PVA–GLU crosslink motif), not directly from the standalone GLU structure. This ensures the charges reflect the chemical environment in the actual crosslinked network.
-3. **For most workflows, skip this step:** Use pre-extracted GLU charges from `charge_data/glutaraldehyde_charges.txt` directly (Step 3).
-
----
-
-## Step 2: Run Antechamber + Parmchk2 (GAFF2 Parametrization)
-
-**Files:** `molecular_utils.py`, depends on AmberTools
-
-**Function:** `getfiles(pdb_file)`
-
-**Description:**
-Converts raw PVA structure into fully parametrized AMBER/LAMMPS topology by:
-
-1. **Antechamber** → Assigns GAFF2 atom types and generates initial partial charges
-   ```bash
-   antechamber -j 4 -at gaff2 -dr no -fi pdb -fo mol2 \
-     -i PVA7_trim.pdb -o PVA7_trim.mol2
-   ```
-
-2. **Parmchk2** → Fills in missing force field parameters
-   ```bash
-   parmchk2 -i PVA7_trim.mol2 -o PVA7_trim.frcmod -f mol2 -a Y
-   ```
-
-3. **tLeap** → Generates AMBER topology file
-   ```bash
-   source leaprc.gaff2
-   SUS = loadmol2 PVA7_trim.mol2
-   check SUS
-   loadamberparams PVA7_trim.frcmod
-   saveamberparm SUS PVA7_trim.top PVA7_trim.crd
-   ```
-
-**Pipeline (from `genhydrogel.py`):**
-```python
-pva_mod, glu_mod = parameterise_molecules(polymer, crosslinker)
-```
-
-Inside `parameterise_molecules()`:
-1. Calls `getfiles(polymer)` to run Antechamber/Parmchk2/tLeap
-2. Hand-corrects atom types for PVA:
-   ```python
-   content = content.replace("ha", "hc").replace("c2", "c3")
-   ```
-3. Returns corrected MOL2 base names
-
-**Outputs:**
-- `PVA{n}_trim.mol2` — Parametrized PVA in MOL2 format
-- `PVA{n}_trim.frcmod` — AMBER force field corrections
-- `PVA{n}_trim.top` — AMBER topology file
-- `PVA{n}_trim.crd` — AMBER coordinate file
-
-**Requirements:**
-- AmberTools (Antechamber, Parmchk2, tLeap)
-- Install via: `conda install -c conda-forge ambertools`
-
----
-
-## Step 3: Assign Pre-Extracted Partial Charges
-
-**File:** `molecular_utils.py`
-
-**Function:** `load_system_charges(chain_length, n_pva, n_glu, pva_charge_file=None, glu_charge_file=None)`
-
-**Description:**
-Reuses partial charges from pre-minimized reference structures rather than using Antechamber-generated charges. This provides consistency across all jobs and avoids redundant calculation.
-
-**Reference Charge Files:**
-- `charge_data/PVA_monomercharges.txt` — Partial charges for one PVA monomer (extracted from PVA7_min.pdb)
-- `charge_data/glutaraldehyde_charges.txt` — Partial charges for GLU molecule (from glutaraldehyde.pdb)
-
-**Format of Charge Files:**
-```
-Atom  Type  OrigCharge  CorrectedCharge
-C1    c3    0.123       0.125
-C2    c3    0.089       0.090
-...
-```
-
-**Example Usage:**
-```python
-from molecular_utils import load_system_charges
-charges = load_system_charges(chain_length=7, n_pva=2, n_glu=1)
-# Returns 1-D numpy array: [PVA_chain_1 charges | PVA_chain_2 charges | GLU_1 charges]
-```
-
-**Why Pre-Extract Charges?**
-See the **Notes** section below for detailed explanation. Briefly: this ensures consistency across all jobs, avoids redundant Antechamber runs, and guarantees chemical accuracy since hard-coded geometries differ from minimized structures.
-
-**The Charge Array Layout:**
-```
-[ c1, h1, c2, h2, o2, h3, c3, h4, h5, ...  (n*10 atoms for monomer),
-  ..., (repeated n_pva times),
-  ..., (GLU charges, n_glu times) ]
-```
-
----
-
-## Complete Workflow: From PDB to LAMMPS Data
-
-### Step-by-Step Example
+For a quick sanity check after installing dependencies, run:
 
 ```bash
-#!/bin/bash
+python example_parametrization.py
+```
 
-# Set up environment
+This demonstrates the three core parametrization steps for a PVA chain. The
+LAMMPS conversion step is separate and requires a combined PDB coordinate file.
+
+## Workflow Overview
+
+| Step | Script or function | Input | Output | Notes |
+|------|--------------------|-------|--------|-------|
+| 1. Build PVA | `pva_builder.py`, `build_pva()` | Chain length `n` | `PVA{n}_trim.pdb` | Hard-coded initial geometry; not minimized |
+| 1b. Prepare GLU crosslinker | Reference data | `charge_data/crosslinked_struct_min.mol2` | Unsaturated GLU structure | Tetrafunctional crosslinker used as a four-branch junction |
+| 2. Parametrize | `molecular_utils.py`, `getfiles()` | PDB structure | `.mol2`, `.frcmod`, `.top`, `.crd` | Runs Antechamber, Parmchk2, and tLeap |
+| 3. Load charges | `molecular_utils.py`, `load_system_charges()` | Reference charge files | NumPy charge array | Tiles pre-extracted PVA and GLU charges |
+| 4. Convert to LAMMPS | `amber_to_lammps.py` | AMBER `.top` files and combined PDB | LAMMPS data and parameter files | Optional conversion step for MD simulations |
+
+The GLU crosslinker is treated as a tetrafunctional unsaturated molecule. Its
+structure is obtained from the minimized
+`charge_data/crosslinked_struct_min.mol2` reference and is used as a
+four-branch junction for PVA-GLU network construction.
+
+In the full-system `genhydrogel.py` path, `parameterise_molecules()` applies
+manual MOL2 atom-type corrections before regenerating `.frcmod` files: PVA
+types are adjusted with `ha -> hc` and `c2 -> c3`, while GLU types are adjusted
+with `c2 -> c6` and `h4 -> h1`.
+
+The repository uses `.top` as the AMBER topology extension generated by tLeap.
+Some AMBER documentation calls equivalent topology files `.prmtop`; in this
+repository, examples use `.top`.
+
+## Quick Start
+
+Clone the repository, install the required tools, and run the example:
+
+```bash
+git clone https://github.com/askforarun/GAFF2-PVA-parameterization.git
+cd GAFF2-PVA-parameterization
 conda activate AmberTools25
+python example_parametrization.py
+```
 
-# Step 1: Build PVA polymer with hard-coded geometry
-python3 << 'EOF'
-import sys
-sys.path.insert(0, "/users/ass2009/sharedscratch/GAFF2-PVA-parameterization")
-from pva_builder import build_pva
+You can also run the first two steps manually:
 
-build_pva(n=7, output_file="PVA7_trim.pdb", cap=False)
-print("✓ Step 1: PVA7_trim.pdb generated")
-EOF
+```bash
+python pva_builder.py --n 7 --no-cap
+python -c "from molecular_utils import getfiles; getfiles('PVA7_trim.pdb')"
+```
 
-# Step 2: Parametrize PVA with GAFF2 (Antechamber + Parmchk2)
-python3 << 'EOF'
-import sys
-sys.path.insert(0, "/users/ass2009/sharedscratch/GAFF2-PVA-parameterization")
-from molecular_utils import getfiles
+This generates files such as:
 
-getfiles("PVA7_trim.pdb")
-print("✓ Step 2a: PVA7_trim.top generated (70 atoms, 69 bonds)")
+- `PVA7_trim.pdb`
+- `PVA7_trim.mol2`
+- `PVA7_trim.frcmod`
+- `PVA7_trim.top`
+- `PVA7_trim.crd`
 
-# Step 2b: Parametrize GLU crosslinker (required for combined systems)
-getfiles("charge_data/glutaraldehyde.pdb")
-print("✓ Step 2b: glutaraldehyde.top generated (31 atoms, 32 bonds)")
-EOF
+## Dependencies
 
-# Step 3: Load pre-extracted partial charges for both molecules
-python3 << 'EOF'
-import sys
-sys.path.insert(0, "/users/ass2009/sharedscratch/GAFF2-PVA-parameterization")
-from molecular_utils import load_system_charges
+| Dependency | Required for | Notes |
+|------------|--------------|-------|
+| Python 3.10+ | All Python scripts | Python 3.7+ may work, but current examples assume modern Python |
+| NumPy | Core scripts | Used for geometry and charge arrays |
+| AmberTools | Parametrization | Provides `antechamber`, `parmchk2`, and `tleap` |
+| MDAnalysis | Charge utilities | Imported by `molecular_utils.py` and `charge_data/extract_charges.py` |
+| ParmEd | AMBER-to-LAMMPS conversion | Required by `amber_to_lammps.py` |
+| Open Babel | Charge regeneration and SMILES utilities | Required by `extract_charges.py` and selected helper functions |
+| Packmol | Packed hydrogel systems | Used by the optional full-system workflow |
+| LAMMPS | MD simulations | Not required for parametrization itself |
 
-# Load charges for 1 PVA chain (7 monomers) and 1 GLU
-charges = load_system_charges(chain_length=7, n_pva=1, n_glu=1)
-print(f"✓ Step 3: Charges loaded for {len(charges)} atoms")
-print(f"  PVA (70 atoms) + GLU (31 atoms) = {len(charges)} total")
-EOF
+Recommended conda packages:
 
-# Create combined PDB with both molecules
-python3 << 'EOF'
-# Read PVA and GLU structures, combine them into one PDB file
-with open("PVA7_trim.pdb") as f:
-    pva_lines = f.readlines()
+```bash
+conda install -c conda-forge ambertools numpy mdanalysis parmed openbabel packmol
+```
 
-with open("charge_data/glutaraldehyde.pdb") as f:
-    glu_lines = f.readlines()
+Install only the optional tools you need for your workflow.
 
-# Count PVA atoms
-pva_atoms = sum(1 for line in pva_lines if line.startswith(("ATOM", "HETATM")))
+## Reference Data
 
-# Write combined PDB
-combined = []
-for line in pva_lines:
-    if line.startswith(("ATOM", "HETATM", "CONECT")):
-        break
-    combined.append(line)
+The `charge_data/` directory stores reference structures and pre-extracted
+charges used by the workflow:
 
-# Extract PVA ATOM records
-for line in pva_lines:
-    if line.startswith(("ATOM", "HETATM")):
-        combined.append(line)
+- `PVA_monomercharges.txt` - corrected charges for one PVA repeat unit
+- `PVA_terminal_group_charges.txt` - terminal group charge reference
+- `glutaraldehyde_charges.txt` - corrected charges for the GLU crosslinker
+- `PVA7_min.pdb` and `PVA7_min.mol2` - minimized PVA reference data
+- `glutaraldehyde.pdb` - unsaturated tetrafunctional GLU crosslinker structure
+  derived from `charge_data/crosslinked_struct_min.mol2`
+- `crosslinked_struct_min.pdb` and `crosslinked_struct_min.mol2` - crosslink motif reference data
+- `extract_charges.py` - utility for regenerating charge text files
 
-# Extract GLU ATOM records with renumbered indices
-glu_atom_count = 0
-for line in glu_lines:
-    if line.startswith(("ATOM", "HETATM")):
-        atom_num = pva_atoms + glu_atom_count + 1
-        new_line = line[:6] + f"{atom_num:5d}" + line[11:]
-        combined.append(new_line)
-        glu_atom_count += 1
-    elif line.startswith("CONECT"):
-        break
+`charge_data/extract_charges.py` should be run from inside the `charge_data/`
+directory and requires AmberTools, Open Babel, and MDAnalysis.
 
-combined.append("END\n")
+Example:
 
-with open("combined.pdb", "w") as f:
-    f.writelines(combined)
-print(f"✓ Created combined.pdb: {pva_atoms} PVA + {glu_atom_count} GLU = {pva_atoms + glu_atom_count} atoms")
-EOF
+```bash
+conda activate AmberTools25
+cd charge_data
+python extract_charges.py
+```
 
-# Step 4: Convert AMBER topologies to LAMMPS format
-python3 amber_to_lammps.py system.lammps parm.lammps combined.pdb \
+Run this only when regenerating the reference charge text files. The normal
+parametrization workflow uses the existing charge files and does not need this
+step.
+
+## AMBER to LAMMPS Conversion
+
+After generating AMBER topology files and preparing a combined PDB, convert the
+system with:
+
+```bash
+python amber_to_lammps.py system.lammps parm.lammps combined.pdb \
   -t PVA7_trim.top charge_data/glutaraldehyde.top \
   -c 1 1 \
   --charges 0 0 \
   --verbose
-
-echo "✓ Step 4: LAMMPS files generated (system.lammps, parm.lammps)"
 ```
 
-**Output Files:**
-- `system.lammps` — LAMMPS data file (101 atoms: 70 PVA + 31 GLU)
-- `parm.lammps` — LAMMPS parameter file with force field coefficients
+Important: `--charges` sets the target net charge per topology. It does not
+inject the per-atom charge array returned by `load_system_charges()`. Per-atom
+charge insertion for the staged crosslinking workflow is handled elsewhere in
+the full hydrogel generation path.
 
-See **Step 4** below for details on the LAMMPS conversion.
+The combined PDB must contain molecules in the same order and counts as the
+topology/count arguments passed to `amber_to_lammps.py`. Packmol is typically
+used for larger systems.
 
----
+## Generated Files
 
-## Step 4: Convert AMBER Topology to LAMMPS Format
+Running the workflow can create generated or scratch files in the repository
+root, including:
 
-**File:** `amber_to_lammps.py`
+- `ANTECHAMBER*`
+- `ATOMTYPE.INF`
+- `tleap.in`
+- `leap.log`
+- `*.mol2`
+- `*.frcmod`
+- `*.top`
+- `*.crd`
+- `combined.pdb`
+- `system.lammps`
+- `parm.lammps`
 
-**Function:** Command-line tool using ParmEd to convert AMBER `.prmtop` files to LAMMPS data/parameter files
+For production work, consider running examples in a separate working directory
+or adding project-specific ignore rules for generated files you do not intend to
+track.
 
-**Description:**
-Converts AMBER topology files (generated in Step 2) into LAMMPS-compatible data and parameter files. This is the final step needed to run simulations in LAMMPS.
+## Repository Layout
 
-**Inputs:**
-- AMBER topology file(s) (`.prmtop`) from Step 2
-- Combined PDB file with all molecules positioned (typically from Packmol)
-
-**Outputs:**
-- `system.lammps` (or custom name) — LAMMPS data file containing:
-  - Atom count, bond count, angle count, dihedral count
-  - Box dimensions and boundary conditions
-  - Atomic coordinates and types
-  - Bond, angle, dihedral lists
-  
-- `parm.lammps` (or custom name) — LAMMPS parameter file containing:
-  - Force field coefficients (bond constants, angle constants, dihedral coefficients)
-  - Nonbonded Lennard-Jones parameters (sigma, epsilon)
-  - Atom mass definitions
-
-**Command-Line Usage:**
-```bash
-python amber_to_lammps.py <output_data> <output_parm> <combined.pdb> \
-  -t <topology.prmtop> \
-  -c <molecule_count> \
-  --charges <net_charge>
-```
-
-**Example (single molecule type):**
-```bash
-python amber_to_lammps.py system.lammps parm.lammps combined.pdb \
-  -t PVA7_trim.prmtop \
-  -c 1 \
-  --charges 0
-```
-
-**Example (multiple molecule types, e.g., PVA + GLU):**
-```bash
-python amber_to_lammps.py pva_glu_system.lammps pva_glu_parm.lammps combined.pdb \
-  -t PVA7_trim.prmtop glutaraldehyde.prmtop \
-  -c 10 5 \
-  --charges 0 0 \
-  --verbose
-```
-
-**Key Options:**
-- `-t / --topologies` — AMBER topology files (one or more)
-- `-c / --counts` — Number of each molecule type (same order as topologies)
-- `--charges` — Target net charge per molecule type (use 0 for neutral)
-- `-b / --buffer` — Padding around molecules (default: 3.8 Å)
-- `--verbose` — Print detailed progress messages
-- `--keep-temp` — Retain temporary intermediate files (bonds.txt, angles.txt, etc.)
-
-**Requirements:**
-- ParmEd: `pip install parmed` or `conda install -c conda-forge parmed`
-- NumPy
-
----
-
-## File Dependencies
-
-### Core Modules
-
-- **`pva_builder.py`** (Step 1)
-  - Standalone; no external dependencies beyond numpy
-  
-- **`molecular_utils.py`** (Steps 2 & 3)
-  - Depends on: `system_constants.py`
-  - Requires: AmberTools (Antechamber, Parmchk2, tLeap)
-  
-- **`system_constants.py`** (Configuration)
-  - Hardcoded constants: `DEFAULT_N_GLU`, `PVA_ATOMS_PER_MONOMER`, `GLU_ATOMS_PER_MOLECULE`
-  
-- **`amber_to_lammps.py`** (Step 4: AMBER → LAMMPS conversion)
-  - Converts AMBER topology files (`.prmtop`) to LAMMPS data/parameter files
-  - Requires: ParmEd, NumPy
-  - Command-line tool; can be called from Python or shell
-  
-- **`genhydrogel.py`** (Full orchestration, optional)
-  - Integrates all four steps plus additional steps (network generation, crosslink formation)
-  - Depends on: all above modules
-
-### Reference Data
-
-- **`charge_data/PVA_monomercharges.txt`** — Pre-extracted PVA charges
-- **`charge_data/glutaraldehyde_charges.txt`** — Pre-extracted GLU charges
-- **`charge_data/PVA7_min.pdb`** — Minimized PVA reference (for charge extraction)
-- **`charge_data/glutaraldehyde.pdb`** — Minimized GLU reference
-- **`charge_data/crosslinked_struct_min.pdb`** — Minimized crosslink motif reference
-
----
-
-## Directory Structure
-
-```
+```text
 GAFF2-PVA-parameterization/
-├── pva_builder.py                    # Step 1: Build PVA with hard-coded geometry
-├── molecular_utils.py                # Step 2 & 3: Parametrization + charge loading
-├── genhydrogel.py                    # Full pipeline orchestrator (optional)
-├── system_constants.py               # Configuration constants
-├── amber_to_lammps.py                # AMBER→LAMMPS conversion (optional)
-├── charge_data/
-│   ├── PVA_monomercharges.txt        # Step 3: Pre-extracted PVA charges
-│   ├── glutaraldehyde_charges.txt    # Step 3: Pre-extracted GLU charges
-│   ├── PVA7_min.pdb                  # Reference minimized PVA
-│   ├── PVA7_min.mol2                 # Reference parametrized PVA
-│   ├── glutaraldehyde.pdb            # Reference minimized GLU
-│   ├── crosslinked_struct_min.pdb    # Crosslink reference
-│   └── extract_charges.py            # Utility to extract charges from PDB
-└── README.md                         # This file
+|-- pva_builder.py
+|-- molecular_utils.py
+|-- amber_to_lammps.py
+|-- genhydrogel.py
+|-- system_constants.py
+|-- example_parametrization.py
+|-- charge_data/
+|   |-- PVA_monomercharges.txt
+|   |-- PVA_terminal_group_charges.txt
+|   |-- glutaraldehyde_charges.txt
+|   |-- PVA7_min.pdb
+|   |-- PVA7_min.mol2
+|   |-- glutaraldehyde.pdb
+|   |-- crosslinked_struct_min.pdb
+|   |-- crosslinked_struct_min.mol2
+|   `-- extract_charges.py
+|-- INSTALL.md
+|-- INDEX.md
+|-- PARAMETRIZATION_STEPS.md
+|-- SETUP_GUIDE.md
+|-- TLEAP_GUIDE.md
+`-- README.md
 ```
 
----
+## Attribution
 
-## Quick Start
-
-### Complete Workflow (PVA + GLU → LAMMPS)
-
-```bash
-cd /users/ass2009/sharedscratch/GAFF2-PVA-parameterization
-conda activate AmberTools25
-
-# Step 1: Build PVA
-python3 << 'EOF'
-from pva_builder import build_pva
-build_pva(n=7, output_file="PVA7_trim.pdb", cap=False)
-print("✓ PVA7_trim.pdb generated")
-EOF
-
-# Step 2: Parametrize both PVA and GLU
-python3 << 'EOF'
-from molecular_utils import getfiles
-getfiles("PVA7_trim.pdb")
-print("✓ PVA7_trim.top generated")
-getfiles("charge_data/glutaraldehyde.pdb")
-print("✓ glutaraldehyde.top generated")
-EOF
-
-# Step 3: Load charges
-python3 << 'EOF'
-from molecular_utils import load_system_charges
-charges = load_system_charges(chain_length=7, n_pva=1, n_glu=1)
-print(f"✓ Charges loaded: {len(charges)} atoms")
-EOF
-
-# Create combined PDB (see full workflow above for details)
-python3 << 'EOF'
-# Combine PVA7_trim.pdb and charge_data/glutaraldehyde.pdb into combined.pdb
-# (See "Complete Workflow" section for full code)
-EOF
-
-# Step 4: Convert to LAMMPS
-python3 amber_to_lammps.py system.lammps parm.lammps combined.pdb \
-  -t PVA7_trim.top charge_data/glutaraldehyde.top \
-  -c 1 1 --charges 0 0
-
-echo "✓ Complete! LAMMPS files ready: system.lammps, parm.lammps"
-```
-
-**Result:**
-- `system.lammps`: 101 atoms (70 PVA + 31 GLU), 101 bonds, 185 angles, 281 dihedrals
-- `parm.lammps`: Force field parameters for all interactions
-
----
-
-## Complete PVA–GLU Combined Workflow (Large System)
-
-For production simulations with many PVA chains and GLU crosslinkers (e.g., 300 PVA chains + 150 GLU molecules), the workflow is identical but with scaled molecule counts:
-
-```bash
-#!/bin/bash
-cd /users/ass2009/sharedscratch/GAFF2-PVA-parameterization
-conda activate AmberTools25
-
-# Step 1: Build reference PVA structure (n=7)
-python3 << 'EOF'
-from pva_builder import build_pva
-build_pva(n=7, output_file="PVA7_trim.pdb", cap=False)
-EOF
-
-# Step 2: Parametrize reference molecules (one-time step)
-python3 << 'EOF'
-from molecular_utils import getfiles
-getfiles("PVA7_trim.pdb")
-getfiles("charge_data/glutaraldehyde.pdb")
-EOF
-
-# Step 3: Load charges for large system
-python3 << 'EOF'
-from molecular_utils import load_system_charges
-# Load charges for 300 PVA chains + 150 GLU molecules (300*70 + 150*31 atoms)
-charges = load_system_charges(chain_length=7, n_pva=300, n_glu=150)
-total_atoms = len(charges)
-print(f"✓ Loaded charges: {total_atoms} atoms ({300*70} PVA + {150*31} GLU)")
-EOF
-
-# Step 4: Create combined PDB with Packmol and convert to LAMMPS
-# (Use Packmol or similar to combine 300 copies of PVA + 150 copies of GLU)
-# Then convert:
-python3 amber_to_lammps.py pva_glu_large.lammps pva_glu_large.parm combined_large.pdb \
-  -t PVA7_trim.top charge_data/glutaraldehyde.top \
-  -c 300 150 \
-  --charges 0 0 \
-  --verbose
-
-echo "✓ Large system ready for MD simulation"
-echo "  LAMMPS data: pva_glu_large.lammps"
-echo "  LAMMPS parm: pva_glu_large.parm"
-```
-
-**Typical System Sizes:**
-| n_pva | n_glu | Total Atoms | Approx. Bonds | Use Case |
-|-------|-------|------------|---------------|----------|
-| 1 | 1 | 101 | 101 | Testing / Quick validation |
-| 10 | 5 | 950 | 950 | Small test system |
-| 300 | 150 | 24,150 | 24,150 | Production simulations |
-
-**Key Points for PVA–GLU Systems:**
-1. **One-time parametrization**: Generate `PVA7_trim.top` and `charge_data/glutaraldehyde.top` once
-2. **Reuse for all system sizes**: Scale only the molecule counts (`-c 300 150`), not the parametrization
-3. **Charge loading scales automatically**: `load_system_charges(n_pva=300, n_glu=150)` returns all charges needed
-4. **Combined PDB**: Use Packmol or similar tool to generate `combined_large.pdb` with all molecules positioned
-
-**GLU Structure Note:**
-- **`glutaraldehyde.pdb`** is the **unsaturated (reactive) form** with H atoms removed from junction carbons
-- The parametrized topology (`glutaraldehyde.top`) and charges (`glutaraldehyde_charges.txt`) are derived from this unsaturated structure
-- This form is used for parametrization and actual network construction with reactive sites for C–C bonding
-- Maintains 31 total atoms (carbons, hydrogens, and oxygens)
-
----
-
-## References
-
-- **GAFF2 Force Field**: General AMBER Force Field v2
-  - J. Wang et al., J. Comp. Chem. 2004 (GAFF)
-  - Additional GAFF2 info: http://ambermd.org/
-  
-- **Antechamber**: Automated topology builder
-  - Part of AmberTools
-  
-- **Hard-Coded PVA Geometry**: Fixed bond lengths and tetrahedral angles
-  - Standard organic chemistry: C-C ~1.54 Å, C-O ~1.42 Å, C-H ~1.09 Å
-  - Angles: sp³ tetrahedral ~109.47°
-
----
-
-## Notes
-
-1. **Why hard-coded geometry in Step 1?**
-   - Fast and reproducible
-   - Provides initial scaffold for Antechamber
-   - Will be relaxed later during LAMMPS compression
-
-2. **Why pre-extracted charges in Step 3?**
-   - Antechamber charges from hard-coded geometry may differ slightly from those from minimized structures
-   - Pre-extracted charges from minimized reference (PVA7_min.pdb) provide chemical consistency
-   - Consistent across all jobs and avoids computational redundancy
-   - Ensures reproducibility of the workflow
-
----
-
-## Contact & Attribution
-
-Pipeline developed for PVA-GLU hydrogel MD simulations using Signac workflow management.
+Developed for PVA-GLU hydrogel molecular dynamics simulations using GAFF2 and
+AmberTools, with downstream integration into Signac-managed hydrogel workflows.

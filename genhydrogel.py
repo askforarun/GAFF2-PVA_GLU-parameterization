@@ -7,8 +7,8 @@ from pathlib import Path
 import numpy as np
 
 
-from .pva_builder import build_pva
-from .molecular_utils import (
+from pva_builder import build_pva
+from molecular_utils import (
     generate_monomer_from_smiles,
     getfiles,
     load_system_charges,
@@ -16,11 +16,11 @@ from .molecular_utils import (
     print_ff_parameters_crosslinking,
     update_data_file_with_counts_and_charges,
 )
-from .file_operations import cleanup_beginning, cleanup_end
-from src.amber_to_lammps import amber2lammps
-from src.system_constants import GLU_ATOMS_PER_MOLECULE, PVA_ATOMS_PER_MONOMER
+from file_operations import cleanup_beginning, cleanup_end
+from amber_to_lammps import amber2lammps
+from system_constants import GLU_ATOMS_PER_MOLECULE, PVA_ATOMS_PER_MONOMER
 
-REFERENCE_DATA  = Path(__file__).parent.parent / "charge_data"
+REFERENCE_DATA  = Path(__file__).parent / "charge_data"
 GLU_PDB         = str(REFERENCE_DATA / "glutaraldehyde.pdb")
 CROSSLINK_SMILES = "CCCC1OCCC(CC(O)CC(O)CC(O)CC)O1"
 FORCE_FIELD     = "gaff2"
