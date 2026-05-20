@@ -82,12 +82,10 @@ from the `hydrogel_simulation` workspace are included here as:
 - `combined_pva21.pdb` - `n=21`, `n_pva=300`, `n_glu=150`, 67,650 atoms
 - `combined_pva25.pdb` - `n=25`, `n_pva=300`, `n_glu=150`, 79,650 atoms
 
-These PDB files were copied from representative replica-1
-`hydrogel_simulation/workspace/*/packed_system.pdb` files. They contain packed,
-uncrosslinked starting configurations with molecules ordered as 300 PVA chains
-followed by 150 GLU molecules. This ordering must match the topology order
-passed to `amber_to_lammps.py`: first `PVA{n}_trim_mod.top`, then
-`charge_data/glutaraldehyde_mod.top`.
+These PDB files contain packed, uncrosslinked starting configurations with
+molecules ordered as 300 PVA chains followed by 150 GLU molecules. This ordering
+must match the topology order passed to `amber_to_lammps.py`: first
+`PVA{n}_trim_mod.top`, then `charge_data/glutaraldehyde_mod.top`.
 
 You can also generate your own combined PDB with Packmol. Use the same molecule
 counts and ordering that you pass to `amber_to_lammps.py`, otherwise the atom
