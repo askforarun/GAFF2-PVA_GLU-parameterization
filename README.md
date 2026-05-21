@@ -22,8 +22,9 @@ For a quick sanity check after installing dependencies, run:
 python example_parametrization.py
 ```
 
-This demonstrates the three core parametrization steps for a PVA chain. The
-LAMMPS conversion step is separate and requires a combined PDB coordinate file.
+This runs the manuscript-oriented PVA-GLU parametrization example for one
+selected chain length, including corrected `_mod` topology inputs and optional
+LAMMPS conversion when a combined PDB is provided.
 
 ## Workflow Overview
 
