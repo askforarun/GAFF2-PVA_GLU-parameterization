@@ -1,12 +1,15 @@
 # GAFF2 PVA-GLU Parameterization
 
-This repository contains a GAFF2-based parametrization workflow for PVA
-(polyvinyl alcohol) chains and GLU (glutaraldehyde) crosslinker building blocks
-used in PVA-GLU hydrogel molecular dynamics workflows.
+This repository is a standalone starting-structure and parameterization workflow
+for the corrected PVA--GLU systems used by the current hydrogel simulation
+workflow. It builds fully hydrolyzed PVA strand building blocks, prepares the
+GLU (glutaraldehyde) junction/crosslinker reference, generates AMBER/GAFF2
+parameters with AmberTools, loads pre-extracted reference charges, and can
+convert combined PVA--GLU coordinate files into LAMMPS data/parameter files.
 
-The core workflow builds PVA structures, generates AMBER/GAFF2 parameters with
-AmberTools, loads pre-extracted reference charges, and can convert AMBER
-topologies into LAMMPS data/parameter files.
+The example combined PDB files in `examples/` provide representative Packmol
+inputs for the three manuscript strand lengths and can be used directly with the
+LAMMPS-conversion step.
 
 ## Start Here
 
@@ -55,8 +58,8 @@ repository, examples use `.top`.
 Clone the repository, install the required tools, and run the example:
 
 ```bash
-git clone https://github.com/askforarun/GAFF2-PVA-parameterization.git
-cd GAFF2-PVA-parameterization
+git clone https://github.com/askforarun/GAFF2-PVA_GLU-parameterization.git
+cd GAFF2-PVA_GLU-parameterization
 conda activate AmberTools25
 python example_parametrization.py --chain-length 17 --n-pva 2 --n-glu 1
 ```
@@ -77,11 +80,11 @@ array for the requested `--n-pva` and `--n-glu`.
 
 LAMMPS conversion is optional because it requires a combined PDB with molecules
 in the same order as the topology/count inputs. Representative packed systems
-from the `hydrogel_simulation` workspace are included here as:
+from the current corrected workflow are included in `examples/` as:
 
-- `combined_pva17.pdb` - `n=17`, `n_pva=300`, `n_glu=150`, 40,350 atoms
-- `combined_pva21.pdb` - `n=21`, `n_pva=300`, `n_glu=150`, 48,750 atoms
-- `combined_pva25.pdb` - `n=25`, `n_pva=300`, `n_glu=150`, 57,150 atoms
+- `examples/packed_system_pva17_glu150.pdb` - `n=17`, `n_pva=300`, `n_glu=150`, 41,250 atoms
+- `examples/packed_system_pva21_glu150.pdb` - `n=21`, `n_pva=300`, `n_glu=150`, 49,650 atoms
+- `examples/packed_system_pva25_glu150.pdb` - `n=25`, `n_pva=300`, `n_glu=150`, 58,050 atoms
 
 These PDB files contain packed, uncrosslinked starting configurations with
 molecules ordered as 300 PVA chains followed by 150 GLU molecules. This ordering
@@ -94,21 +97,21 @@ count and topology checks will fail.
 
 The atom counts follow:
 
-- `n=17`: `300 * 119 + 150 * 31 = 40,350`
-- `n=21`: `300 * 147 + 150 * 31 = 48,750`
-- `n=25`: `300 * 175 + 150 * 31 = 57,150`
+- `n=17`: `300 * 122 + 150 * 31 = 41,250`
+- `n=21`: `300 * 150 + 150 * 31 = 49,650`
+- `n=25`: `300 * 178 + 150 * 31 = 58,050`
 
 To convert in the same run:
 
 ```bash
 python example_parametrization.py --chain-length 17 --n-pva 300 --n-glu 150 \
-  --combined-pdb combined_pva17.pdb --output-prefix pva17_glu
+  --combined-pdb examples/packed_system_pva17_glu150.pdb --output-prefix pva17_glu
 
 python example_parametrization.py --chain-length 21 --n-pva 300 --n-glu 150 \
-  --combined-pdb combined_pva21.pdb --output-prefix pva21_glu
+  --combined-pdb examples/packed_system_pva21_glu150.pdb --output-prefix pva21_glu
 
 python example_parametrization.py --chain-length 25 --n-pva 300 --n-glu 150 \
-  --combined-pdb combined_pva25.pdb --output-prefix pva25_glu
+  --combined-pdb examples/packed_system_pva25_glu150.pdb --output-prefix pva25_glu
 ```
 
 You can also point `--combined-pdb` at a packed system from the

@@ -1,4 +1,4 @@
-# GAFF2-PVA-Parameterization Repository Index
+# GAFF2-PVA-GLU Parameterization Repository Index
 
 ## Quick Links
 
@@ -134,7 +134,7 @@ After running the 3 steps:
 - Numpy array of partial charges
 
 ### Integration Points
-- **Full hydrogel workflow:** Use output in `/mnt/scratch/users/ass2009/hydrogel_simulation/`
+- **Full hydrogel workflow:** Standalone generator for the corrected PVA--GLU starting structures used by the hydrogel simulation workflow
 - **LAMMPS simulations:** Convert to LAMMPS format with `amber_to_lammps.py`
 - **GROMACS:** Further conversion to GROMACS topology
 
@@ -150,6 +150,7 @@ GAFF2-PVA-parameterization/
 ├── genhydrogel.py                    # Full pipeline (optional)
 ├── amber_to_lammps.py                # AMBER→LAMMPS (optional)
 ├── example_parametrization.py        # Runnable example
+├── examples/                         # Representative combined PVA--GLU PDB inputs
 │
 ├── charge_data/
 │   ├── PVA_monomercharges.txt        # Pre-extracted PVA charges
