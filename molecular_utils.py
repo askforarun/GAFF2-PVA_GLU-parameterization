@@ -143,12 +143,26 @@ def load_system_charges(
             f"Expected {PVA_ATOMS_PER_MONOMER} monomer charges, found {len(monomer_charges)}"
         )
     # The uncapped PVA strand built by pva_builder is CH2-(CHOH-CH2)n.
-    # The reference monomer charges describe the neutral CHOH-CH2 repeat;
-    # prepend one CH2 group and neutralize that extra group by placing the
-    # small residual charge on its carbon atom.
-    leading_ch2_charges = list(monomer_charges[-PVA_LEADING_CH2_ATOMS:])
-    leading_ch2_charges[0] -= float(np.sum(leading_ch2_charges))
-    single_chain_charges = leading_ch2_charges + monomer_charges * chain_length
+    # Treat the two reactive terminal CH2 groups equivalently by using the
+    # same terminal-CH2 charge pattern at both ends. The interior repeats use
+    # the neutral CHOH-CH2 repeat charges from the reference capped oligomer.
+    choh_charges = list(monomer_charges[: PVA_ATOMS_PER_MONOMER - PVA_LEADING_CH2_ATOMS])
+    interior_ch2_charges = list(monomer_charges[-PVA_LEADING_CH2_ATOMS:])
+    terminal_ch2_charges = _read_corrected_charges(REFERENCE_DATA / "PVA_terminal_group_charges.txt")
+    if len(terminal_ch2_charges) != PVA_LEADING_CH2_ATOMS:
+        raise ValueError(
+            f"Expected {PVA_LEADING_CH2_ATOMS} terminal CH2 charges, "
+            f"found {len(terminal_ch2_charges)}"
+        )
+    if chain_length == 1:
+        single_chain_charges = terminal_ch2_charges + choh_charges + terminal_ch2_charges
+    else:
+        single_chain_charges = (
+            terminal_ch2_charges
+            + (choh_charges + interior_ch2_charges) * (chain_length - 1)
+            + choh_charges
+            + terminal_ch2_charges
+        )
     expected_chain_charges = pva_atoms_per_chain(chain_length)
     if len(single_chain_charges) != expected_chain_charges:
         raise ValueError(
