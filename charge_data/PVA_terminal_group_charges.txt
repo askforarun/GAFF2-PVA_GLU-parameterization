@@ -1,4 +1,4 @@
-PVA_TERMINAL_CH2 CHARGES (CORRECTED)
+PVA_LEADING_CH2 CHARGES (CORRECTED)
 ==================================================
 Atom     Type           Charge    Corrected
 ------------------------------------------------------------

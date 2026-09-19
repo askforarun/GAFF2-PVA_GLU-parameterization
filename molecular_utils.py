@@ -7,22 +7,14 @@ from pathlib import Path
 import MDAnalysis as mda
 import numpy as np
 
-try:
-    from src.system_constants import (
-        GLU_ATOMS_PER_MOLECULE,
-        PVA_ATOMS_PER_MONOMER,
-        PVA_LEADING_CH2_ATOMS,
-        pva_atoms_per_chain,
-    )
-except ImportError:
-    from system_constants import (
-        GLU_ATOMS_PER_MOLECULE,
-        PVA_ATOMS_PER_MONOMER,
-        PVA_LEADING_CH2_ATOMS,
-        pva_atoms_per_chain,
-    )
+from src.system_constants import (
+    GLU_ATOMS_PER_MOLECULE,
+    PVA_ATOMS_PER_MONOMER,
+    PVA_LEADING_CH2_ATOMS,
+    pva_atoms_per_chain,
+)
 
-REFERENCE_DATA = Path(__file__).parent / "charge_data"
+REFERENCE_DATA = Path(__file__).parent.parent / "charge_data"
 
 
 # ---------------------------------------------------------------------------
