@@ -3,38 +3,40 @@
 PVA Builder Module
 
 This module provides tools for building Polyvinyl Alcohol (PVA) polymer structures
-with hard-coded geometry. The PVA polymer consists of CH3 terminal groups and 
-CH2-CHOH-CH2 repeat units, representing polyvinyl alcohol with alternating hydroxyl-bearing carbons and proper methyl termination.
+with hard-coded geometry. The PVA polymer consists of CH3 terminal groups and
+alternating CHOH-CH2 repeat units, representing polyvinyl alcohol with one
+hydroxyl-bearing carbon per two backbone carbons (fully hydrolyzed PVA) and
+proper methyl termination.
 
 PVA Polymer Structure:
-    Full Polymer: CH3-(CH2-CHOH-CH2)n-CH3
-    Repeat Unit: CH2-CHOH-CH2
+    Full Polymer: CH3-CH2-(CHOH-CH2)n-CH3
+    Repeat Unit: CHOH-CH2
     Represents: Polyvinyl alcohol with alternating hydroxyl-bearing carbons and CH3 termination
-    
+
 Atom Ordering:
-    - Repeat units follow CH2-CHOH-CH2 pattern in the middle section
-    - Within each repeat, atoms are written as CHHCHOHCHH (C, H, H, C, H, O, H, C, H, H)
+    - Repeat units follow an alternating CHOH-CH2 pattern in the middle section
+    - Each CHOH group is written as CHOH (C, H, O, H); each CH2 group as CHH (C, H, H)
     - Last 8 atoms contain CH3 terminal groups in CHHHCHHH order
-    
+
 Usage Examples:
-    # Build PVA with 3 repeat units (11 carbon backbone)
+    # Build PVA with 3 repeat units
     atoms, bonds = build_pva(n=3)
-    
+
     # Build PVA with custom output file
     atoms, bonds = build_pva(n=5, output_file="custom_pva.pdb")
-    
+
     # Command line usage
     python pva_builder.py --n 7 --out my_pva.pdb
-    
+
 Output Files:
     - PVA{n}.pdb: Generated PVA polymer structure with CH3 termination (cap=True)
     - PVA{n}_trim.pdb: Generated uncapped structure when cap=False
     - Contains CONECT records for bond information
-    
+
 Functions:
-    - build_pva(): Build PVA polymer chain with CH3-(CH2-CHOH-CH2)n-CH3 structure
+    - build_pva(): Build PVA polymer chain with CH3-CH2-(CHOH-CH2)n-CH3 structure
     - write_pdb_with_conect(): Write PDB file with bond information
-    
+
 Note:
     - Geometry is hard-coded, no SMILES processing or external dependencies required
     - Uses standard bond lengths and tetrahedral geometry
@@ -58,21 +60,25 @@ def build_pva(
     cap: bool = True,
 ) -> Tuple[List[dict], Dict[int, List[int]]]:
     """
-    Build PVA polymer with CH3-(CH2-CHOH-CH2)n-CH3 structure.
-    
+    Build PVA polymer with CH3-CH2-(CHOH-CH2)n-CH3 structure.
+
     This function creates a Polyvinyl Alcohol polymer chain with CH3 terminal groups
-    and CH2-CHOH-CH2 repeat units in the middle. The structure follows the pattern:
-        CH3-(CH2-CHOH-CH2)n-CH3
-    
+    and alternating CHOH-CH2 repeat units in the middle, matching fully hydrolyzed
+    PVA's one-hydroxyl-per-two-backbone-carbons spacing. The structure follows
+    the pattern:
+        CH3-CH2-(CHOH-CH2)n-CH3
+
     The polymer structure:
-        - CH3-(CH2-CHOH-CH2)n-CH3
-        - Total carbon atoms: 3n + 2 (n repeat units + 2 CH3 terminals)
+        - CH3-CH2-(CHOH-CH2)n-CH3
+        - Total carbon atoms: 2n + 3 (n repeat units + 1 extra CH2 spacer + 2 CH3 terminals)
         - Terminal groups: CH3 at both ends
-        - Middle units: CH2-CHOH-CH2 pattern
-        - Atom ordering: Repeat units in per-unit CHHCHOHCHH order, last 8 atoms contain CH3 groups in CHHHCHHH order
-    
+        - Middle units: alternating CHOH-CH2 pattern
+        - Atom ordering: Repeat units in per-unit CHOHCHH order, last 8 atoms contain CH3 groups in CHHHCHHH order
+        - Uncapped (cap=False) strand is symmetric: CH2-(CHOH-CH2)n, with a
+          reactive CH2 at both ends
+
     Args:
-        n (int): Number of CH2-CHOH-CH2 repeat units in the polymer
+        n (int): Number of CHOH-CH2 repeat units in the polymer
                 Must be positive integer. Typical values: 3-20
         print_info (bool): Whether to print group information and statistics
                           Default: False
@@ -81,23 +87,20 @@ def build_pva(
         cap (bool): Whether to keep terminal CH3 groups. When False, the final
                     8 atoms (CH3-CH3) are removed to produce uncapped ends.
                     Default: True
-    
+
     Returns:
-        Tuple[List[dict], Dict[int, List[int]]]: 
+        Tuple[List[dict], Dict[int, List[int]]]:
             - List of atom dictionaries with keys: name, element, x, y, z
             - Dictionary of bond connections (1-based atom indices)
-    
+
     Raises:
         ValueError: If n is not a positive integer
-    
+
     Example:
         >>> atoms, bonds = build_pva(n=3)
         >>> print(f"Built PVA with {len(atoms)} atoms")
-        CH3 groups: 2 at positions [1, 11]
-        CH2 groups: 6 at positions [2, 4, 5, 7, 8, 10]
-        CHOH groups: 3 at positions [3, 6, 9]
-        Total atoms: 38
-        
+        Total atoms: 32
+
     Note:
         - Uses standard bond lengths: C-C=1.54Å, C-H=1.09Å, C-O=1.43Å, O-H=0.96Å
         - Atoms arranged in straight line along x-axis
@@ -120,10 +123,14 @@ def build_pva(
     co = 1.43  # C-O bond length
     oh = 0.96  # O-H bond length
 
-    # Generate backbone types for CH3-(CH2-CHOH-CH2)n-CH3 structure
-    # Pattern: CH3 + (CH2-CHOH-CH2)*n + CH3
-    # Build repeat units first, then terminal CH3 groups appended last
-    types = ["CH3"] + ["CH2", "CHOH", "CH2"] * n + ["CH3"]
+    # Generate backbone types for CH3-CH2-(CHOH-CH2)n-CH3 structure.
+    # This alternates one CHOH per backbone carbon (skipping every other
+    # carbon), matching fully hydrolyzed PVA's -CH2-CHOH- repeat (one OH per
+    # two backbone carbons), rather than the previous CH2-CHOH-CH2 pattern
+    # (one OH per three backbone carbons). The interior (uncapped) strand is
+    # symmetric, CH2-(CHOH-CH2)n, with a reactive CH2 at both ends.
+    # Pattern: CH3 + CH2 + (CHOH-CH2)*n + CH3.
+    types = ["CH3", "CH2"] + ["CHOH", "CH2"] * n + ["CH3"]
     nC = len(types)
 
     # Build carbon backbone in a straight line
@@ -132,7 +139,7 @@ def build_pva(
         bpos[i] = np.array([i * cc, 0.0, 0.0])
 
     # Build atoms in specific order:
-    # 1. All repeat units (CH2-CHOH-CH2 pattern) in CHHCHOHCHH per-repeat order
+    # 1. All repeat units (alternating CHOH-CH2 pattern) in CHOHCHH per-repeat order
     # 2. Both CH3 groups at the end (ensures last 8 atoms are CHHHCHHH)
     atoms = []
     bonds = {}
@@ -160,7 +167,7 @@ def build_pva(
     c_ids = []
     previous_cid = None
     
-    # Build repeat units (CH2-CHOH-CH2 pattern) first
+    # Build repeat units (alternating CHOH-CH2 pattern) first
     for i in range(1, nC-1):  # Skip first and last CH3
         t = types[i]
         cpos = bpos[i]
@@ -305,7 +312,7 @@ def build_pva(
         print(f"CH2 groups: {ch2_count} at positions {ch2_positions}")
         print(f"CHOH groups: {choh_count} at positions {choh_positions}")
         print(f"Total atoms: {len(atoms)}")
-        print(f"Structure follows CH3-(CH2-CHOH-CH2)n-CH3 pattern with {n} repeat units")
+        print(f"Structure follows CH3-CH2-(CHOH-CH2)n-CH3 pattern with {n} repeat units")
         print(f"Terminal groups: {'CH3 at both ends' if cap else 'trimmed (no CH3 caps)'}")
         if cap:
             print("Last 8 atoms contain CH3 terminal groups in order CHHHCHHH")
@@ -348,11 +355,11 @@ def write_pdb_with_conect(atoms: List[dict], bonds: Dict[int, List[int]], out_pd
         # Creates molecule.pdb with atom and bond information
         
     Note:
-        - PDB title reflects CH3-(CH2-CHOH-CH2)n-CH3 structure
+        - PDB title reflects CH3-CH2-(CHOH-CH2)n-CH3 structure
         - Maintains proper atom ordering for CH3 terminal groups
     """
     with open(out_pdb, "w") as f:
-        f.write("TITLE     PVA Polymer - CH3-(CH2-CHOH-CH2)n-CH3 Pattern\n")
+        f.write("TITLE     PVA Polymer - CH3-CH2-(CHOH-CH2)n-CH3 Pattern\n")
         for i, a in enumerate(atoms, start=1):
             f.write(
                 f"HETATM{i:5d} {a['name']:<4} UNK A   1    "
@@ -470,36 +477,36 @@ def main():
         python pva_builder.py --n 7 --out my_pva.pdb
     
     Arguments:
-        --n: Number of CH2-CHOH-CH2 repeat units (required)
+        --n: Number of CHOH-CH2 repeat units (required)
         --out: Output PDB filename (optional, defaults to PVA{n}.pdb or PVA{n}_trim.pdb if --no-cap)
         --cap/--no-cap: Include or trim terminal CH3 groups (optional)
         --verbose: Print detailed polymer information (optional flag)
-    
+
     Examples:
         # Build PVA with 7 repeat units
         python pva_builder.py --n 7
-        
+
         # Build PVA with custom output filename
         python pva_builder.py --n 5 --out custom_pdb.pdb
-        
+
         # Build PVA with verbose output
         python pva_builder.py --n 3 --verbose
-        
+
     Output:
-        - Generates PVA{n}.pdb file with CH3-(CH2-CHOH-CH2)n-CH3 structure
+        - Generates PVA{n}.pdb file with CH3-CH2-(CHOH-CH2)n-CH3 structure
           (or PVA{n}_trim.pdb when --no-cap is used)
         - Prints group statistics and atom counts
         - Creates CONECT records for bond information
         - Ensures proper atom ordering with CH3 terminal groups in last 8 atoms
-        
+
     Note:
         - The resulting polymer has CH3 terminal groups (not CH2)
-        - Atom ordering follows CHHCHOHCHH per repeat unit
+        - Atom ordering follows an alternating CHOH-CH2 pattern per repeat unit
         - Last 8 atoms contain CH3 groups in CHHHCHHH order
         - Geometry is hard-coded, no external dependencies required
     """
-    ap = argparse.ArgumentParser(description="Build PVA with CH3-(CH2-CHOH-CH2)n-CH3 pattern")
-    ap.add_argument("--n", type=int, required=True, help="Number of CH2-CHOH-CH2 repeat units")
+    ap = argparse.ArgumentParser(description="Build PVA with CH3-CH2-(CHOH-CH2)n-CH3 pattern")
+    ap.add_argument("--n", type=int, required=True, help="Number of CHOH-CH2 repeat units")
     ap.add_argument("--out", default=None, help="Output PDB file")
     ap.add_argument("--verbose", action="store_true", help="Print detailed information about the polymer")
     ap.add_argument(

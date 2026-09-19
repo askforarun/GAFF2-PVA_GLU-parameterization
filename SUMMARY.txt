@@ -47,7 +47,7 @@ Input:  Chain length n (e.g., 7 monomers)
 Output: PVA{n}_trim.pdb (uncapped PVA structure)
 
 Description:
-  - Builds PVA polymer: CH3-(CH2-CHOH-CH2)n-CH3
+  - Builds PVA polymer: CH3-CH2-(CHOH-CH2)n-CH3
   - Uses hard-coded bond lengths (C-C ~1.54Å, C-O ~1.42Å, C-H ~1.09Å)
   - Uses tetrahedral angles (109.47°)
   - NOT minimized (scaffold for parametrization)
@@ -83,8 +83,8 @@ Inputs: Chain length, number of PVA chains, number of GLU molecules
 Output: numpy array of partial charges (1-D)
 
 Reference Files Used:
-  - charge_data/PVA_monomercharges.txt      (10 atoms per monomer)
-  - charge_data/glutaraldehyde_charges.txt  (18 atoms per molecule)
+  - charge_data/PVA_monomercharges.txt      (7 atoms per monomer)
+  - charge_data/glutaraldehyde_charges.txt  (31 atoms per molecule)
 
 Description:
   - Loads pre-extracted charges from minimized reference structures
@@ -113,7 +113,7 @@ QUICK START
 3. Expected output:
    ✓ Step 1 complete: PVA7_trim.pdb (hard-coded structure)
    ✓ Step 2 complete: PVA7_trim.mol2, .frcmod, .top, .crd (parametrized)
-   ✓ Step 3 complete: Loaded 228 pre-extracted charges
+   ✓ Step 3 complete: Loaded 129 pre-extracted charges
 
 ================================================================================
 FILE DEPENDENCY MAP

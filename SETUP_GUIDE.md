@@ -135,13 +135,13 @@ charges = load_system_charges(
     n_glu=1           # 1 GLU molecule
 )
 
-# Returns: numpy array of shape (228,)
+# Returns: numpy array of shape (129,)
 # Layout: [pva1_charges, pva2_charges, glu_charges]
 ```
 
 **Reference Files Used:**
-- `charge_data/PVA_monomercharges.txt` ← charges for 1 PVA monomer (10 atoms)
-- `charge_data/glutaraldehyde_charges.txt` ← charges for 1 GLU (18 atoms)
+- `charge_data/PVA_monomercharges.txt` ← charges for 1 PVA monomer (7 atoms)
+- `charge_data/glutaraldehyde_charges.txt` ← charges for 1 GLU (31 atoms)
 
 **Why Pre-Extracted?**
 - Consistent across all jobs
@@ -172,7 +172,7 @@ from molecular_utils import load_system_charges
 
 # Load for 3 chains (25 monomers) + 2 GLU molecules
 charges = load_system_charges(chain_length=25, n_pva=3, n_glu=2)
-print(f"Total charges: {len(charges)}")  # (25*10*3) + (2*18) = 786
+print(f"Total charges: {len(charges)}")  # (25*7*3) + (2*31) = 587
 ```
 
 ### Task 3: Check Charge Neutrality

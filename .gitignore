@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+
+# Generated/scratch outputs from running the parametrization pipeline.
+# These are build products of pva_builder.py / molecular_utils.py /
+# amber_to_lammps.py, not source; regenerate locally instead of committing.
+ANTECHAMBER*
+ATOMTYPE.INF
+leap.log
+tleap.in
+*.mol2
+*.frcmod
+*.top
+*.crd
+combined_pva*.pdb
+pva*_glu.lammps
+pva*_glu_parm.lammps
+PVA[0-9]*_trim*.pdb
+
+# Exceptions: reference/example structures we do want tracked.
+!charge_data/PVA_monomercharges.txt
+!charge_data/PVA_terminal_group_charges.txt
+!charge_data/glutaraldehyde_charges.txt

@@ -333,17 +333,16 @@ def step9_extract_pva_monomer_charges(mol2_file: str):
     mol2 = mda.Universe(mol2_file)
     mol2.guess_TopologyAttrs(context='default', to_guess=['elements'])
     
-    # Define PVA monomer atoms from PVA chain in CH2-CHOH-CH2 order
-    # These atoms come from the PVA7_min.mol2 (minimized PVA chain structure)
-    # CH2 GROUP 1: C10, H16, H17
-    # CHOH GROUP: C11, H18, O4, H39  
-    # CH2 GROUP 2: C12, H19, H20
+    # Define PVA monomer atoms from the PVA7 chain (CH3-CH2-(CHOH-CH2)x7-CH3)
+    # in CHOH-CH2 order. These atoms come from PVA7_min.mol2 and correspond to
+    # the central (4th of 7) CHOH group and its trailing CH2 spacer.
+    # CHOH GROUP: C8, H15, O4, H16
+    # CH2 GROUP:  C9, H17, H18
 
-    ch2_1_atoms = ['C10', 'H19', 'H20']
-    choh_atoms = ['C11', 'H21', 'O4', 'H22']
-    ch2_2_atoms = ['C12', 'H23', 'H24']
+    choh_atoms = ['C8', 'H15', 'O4', 'H16']
+    ch2_atoms = ['C9', 'H17', 'H18']
 
-    pva_atoms = ch2_1_atoms + choh_atoms + ch2_2_atoms
+    pva_atoms = choh_atoms + ch2_atoms
     _validate_atom_count("PVA monomer", len(pva_atoms), PVA_ATOMS_PER_MONOMER)
     
     pva_charges = []
@@ -373,13 +372,14 @@ def step9_extract_pva_monomer_charges(mol2_file: str):
             pva_charges.append(0.0)
             original_charges.append(0.0)
     
-    # Calculate charge correction to make net charge zero
+    # Calculate charge correction to make net charge zero. The monomer has a
+    # single CH2 spacer carbon (C9); the full correction is applied there,
+    # leaving the CHOH group's charges untouched.
     net_charge = np.sum(pva_charges)
     if abs(net_charge) > 1e-6:  # Only adjust if net charge is significant
-        correction = -net_charge / 2  # Divide by 2 for C10 and C12
-        # Apply correction to C10 and C12 (indices 0 and 7 in pva_charges)
-        pva_charges[0] += correction  # C10
-        pva_charges[7] += correction  # C12
+        correction = -net_charge  # Full correction on the single CH2 carbon
+        # Apply correction to C9 (index 4 in pva_charges: 4 CHOH atoms, then C9)
+        pva_charges[4] += correction  # C9
     
     # Display charges
     if abs(net_charge) > 1e-6:
@@ -390,24 +390,17 @@ def step9_extract_pva_monomer_charges(mol2_file: str):
     print(f"{'Atom':<8} {'Charge':>12} {'Corrected':>12}")
     print("-"*50)
     
-    print("\nCH2 GROUP 1:")
-    for i, atom_name in enumerate(ch2_1_atoms):
+    print("\nCHOH GROUP:")
+    for i, atom_name in enumerate(choh_atoms):
         original = original_charges[i]
         corrected = pva_charges[i]
         star = "*" if corrected != original else " "
         print(f"{atom_name:<8} {original:12.6f} {corrected:12.6f}{star}")
-    
-    print("\nCHOH GROUP:")
-    for i, atom_name in enumerate(choh_atoms):
-        original = original_charges[i+3]
-        corrected = pva_charges[i+3]
-        star = "*" if corrected != original else " "
-        print(f"{atom_name:<8} {original:12.6f} {corrected:12.6f}{star}")
-    
-    print("\nCH2 GROUP 2:")
-    for i, atom_name in enumerate(ch2_2_atoms):
-        original = original_charges[i+7]
-        corrected = pva_charges[i+7]
+
+    print("\nCH2 GROUP:")
+    for i, atom_name in enumerate(ch2_atoms):
+        original = original_charges[i+4]
+        corrected = pva_charges[i+4]
         star = "*" if corrected != original else " "
         print(f"{atom_name:<8} {original:12.6f} {corrected:12.6f}{star}")
     
@@ -427,26 +420,18 @@ def step9_extract_pva_monomer_charges(mol2_file: str):
         f.write(f"{'Atom':<8} {'Type':<8} {'Charge':>12} {'Corrected':>12}\n")
         f.write("-"*60 + "\n")
         
-        f.write("\nCH2 GROUP 1:\n")
-        for i, atom_name in enumerate(ch2_1_atoms):
+        f.write("\nCHOH GROUP:\n")
+        for i, atom_name in enumerate(choh_atoms):
             original = original_charges[i]
             corrected = pva_charges[i]
             star = "*" if corrected != original else " "
             atom = pva_mol_atoms[pva_mol_atoms.names == atom_name][0]
             f.write(f"{atom_name:<8} {atom.type:<8} {original:12.6f} {corrected:12.6f}{star}\n")
-        
-        f.write("\nCHOH GROUP:\n")
-        for i, atom_name in enumerate(choh_atoms):
-            original = original_charges[i+3]
-            corrected = pva_charges[i+3]
-            star = "*" if corrected != original else " "
-            atom = pva_mol_atoms[pva_mol_atoms.names == atom_name][0]
-            f.write(f"{atom_name:<8} {atom.type:<8} {original:12.6f} {corrected:12.6f}{star}\n")
-        
-        f.write("\nCH2 GROUP 2:\n")
-        for i, atom_name in enumerate(ch2_2_atoms):
-            original = original_charges[i+7]
-            corrected = pva_charges[i+7]
+
+        f.write("\nCH2 GROUP:\n")
+        for i, atom_name in enumerate(ch2_atoms):
+            original = original_charges[i+4]
+            corrected = pva_charges[i+4]
             star = "*" if corrected != original else " "
             atom = pva_mol_atoms[pva_mol_atoms.names == atom_name][0]
             f.write(f"{atom_name:<8} {atom.type:<8} {original:12.6f} {corrected:12.6f}{star}\n")

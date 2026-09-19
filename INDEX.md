@@ -67,7 +67,7 @@
 **Output:** `PVA{n}_trim.pdb`
 
 Build a PVA polymer using fixed bond lengths and tetrahedral angles.
-Structure: `CH3-(CH2-CHOH-CH2)n-CH3` (cap=True) or `(CH2-CHOH-CH2)n` (cap=False)
+Structure: `CH3-CH2-(CHOH-CH2)n-CH3` (cap=True) or `CH2-(CHOH-CH2)n` (cap=False)
 
 See: [PARAMETRIZATION_STEPS.md](PARAMETRIZATION_STEPS.md#step-1-hard-coded-pva-geometry)
 
@@ -111,9 +111,9 @@ python example_parametrization.py
 
 ### 3. Expected Output
 ```
-✓ Step 1: Built PVA7_trim.pdb (71 atoms)
+✓ Step 1: Built PVA7_trim.pdb (52 atoms)
 ✓ Step 2: Generated PVA7_trim.mol2, .frcmod, .top, .crd
-✓ Step 3: Loaded 228 pre-extracted charges
+✓ Step 3: Loaded 129 pre-extracted charges
 ```
 
 ---

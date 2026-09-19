@@ -90,8 +90,8 @@ def build_pva(n: int, output_file: str = None, cap: bool = True):
     """
     Build PVA polymer with optional capping.
     
-    Structure with cap=True:  CH3-(CH2-CHOH-CH2)n-CH3
-    Structure with cap=False: (CH2-CHOH-CH2)n
+    Structure with cap=True:  CH3-CH2-(CHOH-CH2)n-CH3
+    Structure with cap=False: CH2-(CHOH-CH2)n
     
     Args:
         n: Number of repeat units (e.g., 7)
@@ -110,10 +110,10 @@ def build_pva(n: int, output_file: str = None, cap: bool = True):
 
 **Structure:**
 ```
-With cap=True:  CH3-(CH2-CHOH-CH2)-(CH2-CHOH-CH2)-...-CH3
-With cap=False: (CH2-CHOH-CH2)-(CH2-CHOH-CH2)-...
+With cap=True:  CH3-CH2-(CHOH-CH2)-(CHOH-CH2)-...-CH3
+With cap=False: CH2-(CHOH-CH2)-(CHOH-CH2)-...
  ↓
-Repeat unit: C-H-H-C-H-O-H-C-H-H (per repeat unit in backbone)
+Repeat unit: C-H-O-H-C-H-H (CHOH-CH2, per repeat unit in backbone)
 Terminal:    CH3 at each end (only if cap=True)
 ```
 
@@ -237,11 +237,11 @@ H5    hc    0.045       0.045
 charges = load_system_charges(chain_length=7, n_pva=3, n_glu=1)
 
 # Returns:
-# [ pva_monomer_charges (10 atoms) × 7 monomers,  ← for PVA chain 1
-#   pva_monomer_charges (10 atoms) × 7 monomers,  ← for PVA chain 2
-#   pva_monomer_charges (10 atoms) × 7 monomers,  ← for PVA chain 3
-#   glutaraldehyde_charges (18 atoms) ]            ← for GLU molecule
-# Total: (10×7×3) + 18 = 228 atoms
+# [ pva_monomer_charges (7 atoms) × 7 monomers,  ← for PVA chain 1
+#   pva_monomer_charges (7 atoms) × 7 monomers,  ← for PVA chain 2
+#   pva_monomer_charges (7 atoms) × 7 monomers,  ← for PVA chain 3
+#   glutaraldehyde_charges (31 atoms) ]            ← for GLU molecule
+# Total: (7×7×3) + 31 = 178 atoms
 ```
 
 **Why Pre-Extracted?**

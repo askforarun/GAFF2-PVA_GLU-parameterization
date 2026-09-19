@@ -289,10 +289,10 @@ Running Antechamber, Parmchk2, and tLeap...
 STEP 3: Assign Pre-Extracted Partial Charges
 ──────────────────────────────────────────────────────────────────────
 ✓ Successfully loaded partial charges
-  Total atoms: 228
+  Total atoms: 129
   Breakdown:
-    - PVA atoms: 140 (2 chains × 7 monomers × 10 atoms/monomer)
-    - GLU atoms: 18 (1 molecules × 18 atoms/molecule)
+    - PVA atoms: 98 (2 chains × 7 monomers × 7 atoms/monomer)
+    - GLU atoms: 31 (1 molecules × 31 atoms/molecule)
   
   Net system charge: 0.00000 (should be ≈0.0)
 
@@ -302,7 +302,7 @@ PIPELINE COMPLETE
 
 ✓ Step 1: Built PVA structure (PVA7_trim.pdb)
 ✓ Step 2: Parametrized with GAFF2 (.mol2, .frcmod, .top, .crd)
-✓ Step 3: Loaded 228 pre-extracted partial charges
+✓ Step 3: Loaded 129 pre-extracted partial charges
 
 The system is now ready for:
   - AMBER→LAMMPS conversion (amber_to_lammps.py)

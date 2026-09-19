@@ -79,9 +79,9 @@ LAMMPS conversion is optional because it requires a combined PDB with molecules
 in the same order as the topology/count inputs. Representative packed systems
 from the `hydrogel_simulation` workspace are included here as:
 
-- `combined_pva17.pdb` - `n=17`, `n_pva=300`, `n_glu=150`, 55,650 atoms
-- `combined_pva21.pdb` - `n=21`, `n_pva=300`, `n_glu=150`, 67,650 atoms
-- `combined_pva25.pdb` - `n=25`, `n_pva=300`, `n_glu=150`, 79,650 atoms
+- `combined_pva17.pdb` - `n=17`, `n_pva=300`, `n_glu=150`, 40,350 atoms
+- `combined_pva21.pdb` - `n=21`, `n_pva=300`, `n_glu=150`, 48,750 atoms
+- `combined_pva25.pdb` - `n=25`, `n_pva=300`, `n_glu=150`, 57,150 atoms
 
 These PDB files contain packed, uncrosslinked starting configurations with
 molecules ordered as 300 PVA chains followed by 150 GLU molecules. This ordering
@@ -94,9 +94,9 @@ count and topology checks will fail.
 
 The atom counts follow:
 
-- `n=17`: `300 * 170 + 150 * 31 = 55,650`
-- `n=21`: `300 * 210 + 150 * 31 = 67,650`
-- `n=25`: `300 * 250 + 150 * 31 = 79,650`
+- `n=17`: `300 * 119 + 150 * 31 = 40,350`
+- `n=21`: `300 * 147 + 150 * 31 = 48,750`
+- `n=25`: `300 * 175 + 150 * 31 = 57,150`
 
 To convert in the same run:
 
