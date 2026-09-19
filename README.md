@@ -7,8 +7,9 @@ GLU (glutaraldehyde) junction/crosslinker reference, generates AMBER/GAFF2
 parameters with AmberTools, loads pre-extracted reference charges, and can
 convert combined PVA--GLU coordinate files into LAMMPS data/parameter files.
 
-The example combined PDB files in `examples/` provide representative Packmol
-inputs for the three manuscript strand lengths and can be used directly with the
+The `examples/` directory contains generated single-chain PVA PDB files and
+representative Packmol combined PVA--GLU PDB inputs for the three manuscript
+strand lengths. The combined PDB files can be used directly with the
 LAMMPS-conversion step.
 
 ## Start Here
@@ -73,10 +74,11 @@ python example_parametrization.py --chain-length 21 --n-pva 300 --n-glu 150
 python example_parametrization.py --chain-length 25 --n-pva 300 --n-glu 150
 ```
 
-For each run, the script builds `PVA{n}_trim.pdb`, writes corrected
-`PVA{n}_trim_mod.*` files, parametrizes the GLU reference, writes corrected
-`charge_data/glutaraldehyde_mod.*` files, and loads the corresponding charge
-array for the requested `--n-pva` and `--n-glu`.
+For each run, the script builds `PVA{n}_trim.pdb` in the working directory,
+writes corrected `PVA{n}_trim_mod.*` files, parametrizes the GLU reference,
+writes corrected `charge_data/glutaraldehyde_mod.*` files, and loads the
+corresponding charge array for the requested `--n-pva` and `--n-glu`. Generated
+reference PVA trim PDBs are also provided in `examples/`.
 
 LAMMPS conversion is optional because it requires a combined PDB with molecules
 in the same order as the topology/count inputs. Representative packed systems
@@ -114,12 +116,12 @@ python example_parametrization.py --chain-length 25 --n-pva 300 --n-glu 150 \
   --combined-pdb examples/packed_system_pva25_glu150.pdb --output-prefix pva25_glu
 ```
 
-You can also point `--combined-pdb` at a packed system from the
-`hydrogel_simulation` workspace without copying it into this repository:
+The same command can be run using the bundled examples without referencing an
+external workflow directory:
 
 ```bash
 python example_parametrization.py --chain-length 17 --n-pva 300 --n-glu 150 \
-  --combined-pdb /users/ass2009/sharedscratch/hydrogel_simulation/workspace/<JOB_ID>/packed_system.pdb \
+  --combined-pdb examples/packed_system_pva17_glu150.pdb \
   --output-prefix pva17_glu
 ```
 
@@ -132,7 +134,7 @@ python -c "from molecular_utils import getfiles; getfiles('PVA17_trim.pdb')"
 
 This generates files such as:
 
-- `PVA17_trim.pdb`
+- `PVA17_trim.pdb` (example copy provided at `examples/PVA17_trim.pdb`)
 - `PVA17_trim.mol2`
 - `PVA17_trim.frcmod`
 - `PVA17_trim.top`

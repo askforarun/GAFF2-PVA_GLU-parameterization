@@ -21,3 +21,4 @@ PVA[0-9]*_trim*.pdb
 !charge_data/PVA_monomercharges.txt
 !charge_data/PVA_terminal_group_charges.txt
 !charge_data/glutaraldehyde_charges.txt
+!examples/PVA[0-9]*_trim.pdb

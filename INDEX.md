@@ -150,7 +150,7 @@ GAFF2-PVA-parameterization/
 ├── genhydrogel.py                    # Full pipeline (optional)
 ├── amber_to_lammps.py                # AMBER→LAMMPS (optional)
 ├── example_parametrization.py        # Runnable example
-├── examples/                         # Representative combined PVA--GLU PDB inputs
+├── examples/                         # Single-chain and combined PVA--GLU PDB examples
 │
 ├── charge_data/
 │   ├── PVA_monomercharges.txt        # Pre-extracted PVA charges
