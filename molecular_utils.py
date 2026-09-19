@@ -8,9 +8,19 @@ import MDAnalysis as mda
 import numpy as np
 
 try:
-    from src.system_constants import GLU_ATOMS_PER_MOLECULE, PVA_ATOMS_PER_MONOMER
+    from src.system_constants import (
+        GLU_ATOMS_PER_MOLECULE,
+        PVA_ATOMS_PER_MONOMER,
+        PVA_LEADING_CH2_ATOMS,
+        pva_atoms_per_chain,
+    )
 except ImportError:
-    from system_constants import GLU_ATOMS_PER_MOLECULE, PVA_ATOMS_PER_MONOMER
+    from system_constants import (
+        GLU_ATOMS_PER_MOLECULE,
+        PVA_ATOMS_PER_MONOMER,
+        PVA_LEADING_CH2_ATOMS,
+        pva_atoms_per_chain,
+    )
 
 REFERENCE_DATA = Path(__file__).parent / "charge_data"
 
@@ -132,7 +142,19 @@ def load_system_charges(
         raise ValueError(
             f"Expected {PVA_ATOMS_PER_MONOMER} monomer charges, found {len(monomer_charges)}"
         )
-    single_chain_charges = monomer_charges * chain_length
+    # The uncapped PVA strand built by pva_builder is CH2-(CHOH-CH2)n.
+    # The reference monomer charges describe the neutral CHOH-CH2 repeat;
+    # prepend one CH2 group and neutralize that extra group by placing the
+    # small residual charge on its carbon atom.
+    leading_ch2_charges = list(monomer_charges[-PVA_LEADING_CH2_ATOMS:])
+    leading_ch2_charges[0] -= float(np.sum(leading_ch2_charges))
+    single_chain_charges = leading_ch2_charges + monomer_charges * chain_length
+    expected_chain_charges = pva_atoms_per_chain(chain_length)
+    if len(single_chain_charges) != expected_chain_charges:
+        raise ValueError(
+            f"Expected {expected_chain_charges} PVA chain charges for n={chain_length}, "
+            f"found {len(single_chain_charges)}"
+        )
     total_pva = np.sum(single_chain_charges)
     print(f"Total PVA charge (1 chain, {chain_length} monomers): {total_pva:.10f}")
     if abs(total_pva) > 1e-8:

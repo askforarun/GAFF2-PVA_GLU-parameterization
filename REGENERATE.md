@@ -1,14 +1,12 @@
 # Regenerating parametrization outputs
 
-`pva_builder.py` and `system_constants.py` were corrected on 2026-09-19 to
-build the true fully-hydrolyzed PVA repeat unit (`-CH2-CHOH-` alternating,
-one hydroxyl per two backbone carbons) instead of the previous
-`-CH2-CHOH-CH2-` pattern (one hydroxyl per three backbone carbons). See
-`pva_builder.py`'s module docstring for the corrected structure.
+`pva_builder.py` and `system_constants.py` define the fully hydrolyzed PVA
+repeat as an alternating `-CH2-CHOH-` backbone with one hydroxyl per two
+backbone carbons. See `pva_builder.py`'s module docstring for the structure
+and atom ordering used by the current workflow.
 
-Because of this fix, every generated/parametrized file that was built from
-the old code is now chemically stale and has been removed from version
-control (see the removal commit). This includes:
+Generated/parametrized files should be regenerated from the current builder
+before production use. This includes:
 
 - `combined_pva17.pdb`, `combined_pva21.pdb`, `combined_pva25.pdb`
 - `PVA17_trim*.{pdb,mol2,frcmod,top,crd}`
@@ -31,7 +29,7 @@ control (see the removal commit). This includes:
 
 ```bash
 conda activate AmberTools25
-cd /users/ass2009/sharedscratch/GAFF2-PVA-parameterization
+cd /users/ass2009/sharedscratch/GAFF2-PVA_GLU-parameterization
 
 # Reference structures used by charge_data/extract_charges.py
 cd charge_data && python extract_charges.py && cd ..

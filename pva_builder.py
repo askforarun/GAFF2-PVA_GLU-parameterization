@@ -87,20 +87,20 @@ def build_pva(
         cap (bool): Whether to keep terminal CH3 groups. When False, the final
                     8 atoms (CH3-CH3) are removed to produce uncapped ends.
                     Default: True
-
+    
     Returns:
-        Tuple[List[dict], Dict[int, List[int]]]:
+        Tuple[List[dict], Dict[int, List[int]]]: 
             - List of atom dictionaries with keys: name, element, x, y, z
             - Dictionary of bond connections (1-based atom indices)
-
+    
     Raises:
         ValueError: If n is not a positive integer
-
+    
     Example:
         >>> atoms, bonds = build_pva(n=3)
         >>> print(f"Built PVA with {len(atoms)} atoms")
         Total atoms: 32
-
+        
     Note:
         - Uses standard bond lengths: C-C=1.54Å, C-H=1.09Å, C-O=1.43Å, O-H=0.96Å
         - Atoms arranged in straight line along x-axis
@@ -123,11 +123,9 @@ def build_pva(
     co = 1.43  # C-O bond length
     oh = 0.96  # O-H bond length
 
-    # Generate backbone types for CH3-CH2-(CHOH-CH2)n-CH3 structure.
-    # This alternates one CHOH per backbone carbon (skipping every other
-    # carbon), matching fully hydrolyzed PVA's -CH2-CHOH- repeat (one OH per
-    # two backbone carbons), rather than the previous CH2-CHOH-CH2 pattern
-    # (one OH per three backbone carbons). The interior (uncapped) strand is
+    # Generate backbone types for the CH3-CH2-(CHOH-CH2)n-CH3 structure.
+    # The hydroxyl-bearing CHOH sites follow the fully hydrolyzed PVA spacing
+    # of one OH per two backbone carbons. The interior (uncapped) strand is
     # symmetric, CH2-(CHOH-CH2)n, with a reactive CH2 at both ends.
     # Pattern: CH3 + CH2 + (CHOH-CH2)*n + CH3.
     types = ["CH3", "CH2"] + ["CHOH", "CH2"] * n + ["CH3"]

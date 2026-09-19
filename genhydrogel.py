@@ -18,7 +18,7 @@ from molecular_utils import (
 )
 from file_operations import cleanup_beginning, cleanup_end
 from amber_to_lammps import amber2lammps
-from system_constants import GLU_ATOMS_PER_MOLECULE, PVA_ATOMS_PER_MONOMER
+from system_constants import GLU_ATOMS_PER_MOLECULE, pva_atoms_per_chain
 
 REFERENCE_DATA  = Path(__file__).parent / "charge_data"
 GLU_PDB         = str(REFERENCE_DATA / "glutaraldehyde.pdb")
@@ -73,7 +73,7 @@ def build_pva_system(
             )
 
     expected_total_atoms = (
-        n_pva * PVA_ATOMS_PER_MONOMER * n + n_glu * GLU_ATOMS_PER_MOLECULE
+        n_pva * pva_atoms_per_chain(n) + n_glu * GLU_ATOMS_PER_MOLECULE
     )
     box_size = init_box_size
     maxit = 50

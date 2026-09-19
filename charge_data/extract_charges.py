@@ -94,99 +94,49 @@ def step4_run_antechamber(pdb_file: str) -> str:
     
     return mol2_file
 
-def step5_extract_pva_terminal_group_charges(mol2_file: str):
-    """Step 5: Extract PVA terminal group charges, apply correction, print to file"""
-    print("\n=== STEP 5: Extracting PVA terminal group charges ===")
-    
-    # Load the mol2 file
-    mol2 = mda.Universe(mol2_file)
-    mol2.guess_TopologyAttrs(context='default', to_guess=['elements'])
-    
-    # Define PVA terminal group atoms in CH2-CHOH-CH2 order
-    # These atoms come from crosslinked_struct_min.mol2 (minimized crosslinked PVA-glutaraldehyde structure)
-    # This represents the terminal portion: CH3-(CH2-CHOH-CH2)n-CH3
-    # CH2 GROUP 1 (first in order): C3, H7, H8
-    # CHOH GROUP (middle): C2, H5, O, H6  
-    # CH2 GROUP 2 (last in order): C1, H3, H4
-    ch2_1_atoms = ['C3', 'H7', 'H8']
-    choh_atoms = ['C2', 'H5', 'O', 'H6']
-    ch2_2_atoms = ['C1', 'H3', 'H4']
-    
-    print("PVA_TERMINAL_GROUP CHARGES")
-    print("="*50)
-    print(f"{'Atom':<8} {'Charge':>12} {'Corrected':>12}")
-    print("-"*50)
-    
-    pva_charges = []
-    pva_corrected_charges = []
-    
-    # Select all PVA atoms
-    all_pva_atoms = ch2_1_atoms + choh_atoms + ch2_2_atoms
-    _validate_atom_count("PVA terminal group", len(all_pva_atoms), PVA_ATOMS_PER_MONOMER)
-    pva_selection = " or ".join([f"name {name}" for name in all_pva_atoms])
-    pva_mol_atoms = mol2.select_atoms(pva_selection)
-    
-    # Validate that all expected atoms are present to avoid IndexError
-    missing_atoms = [name for name in all_pva_atoms if len(pva_mol_atoms[pva_mol_atoms.names == name]) == 0]
-    if missing_atoms:
-        raise RuntimeError(
-            f"Expected PVA terminal atoms not found in {mol2_file}: {', '.join(missing_atoms)}. "
-            "Ensure antechamber retained the atom names or update the selection list."
+def write_pva_leading_ch2_charges(pva_repeat_charges: list[float]) -> list[float]:
+    """Write charges for the extra leading CH2 group in CH2-(CHOH-CH2)n.
+
+    The leading CH2 charges are derived from the CH2 group of the corrected
+    PVA repeat. The small residual group charge is placed on the carbon atom so
+    the additional CH2 fragment is neutral when prepended to the neutral repeat
+    series used by ``load_system_charges``.
+    """
+    if len(pva_repeat_charges) != PVA_ATOMS_PER_MONOMER:
+        raise ValueError(
+            f"Expected {PVA_ATOMS_PER_MONOMER} repeat charges, "
+            f"found {len(pva_repeat_charges)}"
         )
-    
-    # Calculate residual charge and apply to C3
-    total_pva_sum = np.sum([atom.charge for atom in pva_mol_atoms])
-    residual_charge = total_pva_sum
-    c3_correction = -residual_charge
-    
-    # Display in CH2-CHOH-CH2 order
-    for group_name, group_atoms in [("CH2 GROUP 1", ch2_1_atoms), ("CHOH GROUP", choh_atoms), ("CH2 GROUP 2", ch2_2_atoms)]:
-        if group_name == "CH2 GROUP 1":
-            print(f"\n{group_name}:")
-        elif group_name == "CHOH GROUP":
-            print(f"\n{group_name}:")
-        else:
-            print(f"\n{group_name}:")
-        
-        for atom_name in group_atoms:
-            atom = pva_mol_atoms[pva_mol_atoms.names == atom_name][0]
-            original_charge = atom.charge
-            corrected_charge = original_charge
-            
-            if atom.name == 'C3':
-                corrected_charge += c3_correction
-            
-            print(f"{atom.name:<8} {original_charge:12.6f} {corrected_charge:12.6f}{'*' if atom.name == 'C3' else ' '}")
-            pva_charges.append(original_charge)
-            pva_corrected_charges.append(corrected_charge)
-    
-    print("\n" + "-"*50)
-    print(f"{'SUM':<8} {np.sum(pva_charges):12.6f} {np.sum(pva_corrected_charges):12.6f}")
-    print("* = corrected charge")
-    print("="*50 + "\n")
-    
-    # Write to file in CH2-CHOH-CH2 order
-    with open('PVA_terminal_group_charges.txt', 'w') as f:
-        f.write("PVA_TERMINAL_GROUP CHARGES\n")
-        f.write("="*50 + "\n")
+    leading_ch2_charges = list(pva_repeat_charges[-3:])
+    original_charges = list(leading_ch2_charges)
+    leading_ch2_charges[0] -= float(np.sum(leading_ch2_charges))
+
+    with open("PVA_terminal_group_charges.txt", "w") as f:
+        f.write("PVA_LEADING_CH2 CHARGES (CORRECTED)\n")
+        f.write("=" * 50 + "\n")
         f.write(f"{'Atom':<8} {'Type':<8} {'Charge':>12} {'Corrected':>12}\n")
-        f.write("-"*60 + "\n")
-        
-        for group_name, group_atoms in [("CH2 GROUP 1", ch2_1_atoms), ("CHOH GROUP", choh_atoms), ("CH2 GROUP 2", ch2_2_atoms)]:
-            f.write(f"\n{group_name}:\n")
-            for atom_name in group_atoms:
-                atom = pva_mol_atoms[pva_mol_atoms.names == atom_name][0]
-                original_charge = pva_charges[all_pva_atoms.index(atom_name)]
-                corrected_charge = pva_corrected_charges[all_pva_atoms.index(atom_name)]
-                star = '*' if atom.name == 'C3' else ' '
-                f.write(f"{atom.name:<8} {atom.type:<8} {original_charge:12.6f} {corrected_charge:12.6f}{star}\n")
-        
-        f.write("\n" + "-"*60 + "\n")
-        f.write(f"{'SUM':<8} {'':<8} {np.sum(pva_charges):12.6f} {np.sum(pva_corrected_charges):12.6f}\n")
+        f.write("-" * 60 + "\n")
+        for atom_name, atom_type, original, corrected in zip(
+            ("C1", "H1", "H2"),
+            ("c3", "hc", "hc"),
+            original_charges,
+            leading_ch2_charges,
+        ):
+            star = "*" if corrected != original else " "
+            f.write(
+                f"{atom_name:<8} {atom_type:<8} {original:12.6f} "
+                f"{corrected:12.6f}{star}\n"
+            )
+        f.write("-" * 60 + "\n")
+        f.write(
+            f"{'SUM':<8} {'':<8} {np.sum(original_charges):12.6f} "
+            f"{np.sum(leading_ch2_charges):12.6f}\n"
+        )
         f.write("* = corrected charge\n")
-        f.write("="*50 + "\n")
-    
-    print("PVA_terminal_group_charges.txt file generated")
+        f.write("=" * 50 + "\n")
+
+    print("PVA_terminal_group_charges.txt file generated for the leading CH2 group")
+    return leading_ch2_charges
 
 def step6_extract_glutaraldehyde_charges(mol2_file: str):
     """Step 6: Extract glutaraldehyde charges, apply correction, print to file"""
@@ -328,11 +278,11 @@ def step8_run_antechamber_pva(pdb_file: str) -> str:
 def step9_extract_pva_monomer_charges(mol2_file: str):
     """Step 9: Extract PVA monomer charges for specified atoms in order"""
     print("\n=== STEP 9: Extracting PVA monomer charges ===")
-    
+
     # Load the mol2 file
     mol2 = mda.Universe(mol2_file)
     mol2.guess_TopologyAttrs(context='default', to_guess=['elements'])
-    
+
     # Define PVA monomer atoms from the PVA7 chain (CH3-CH2-(CHOH-CH2)x7-CH3)
     # in CHOH-CH2 order. These atoms come from PVA7_min.mol2 and correspond to
     # the central (4th of 7) CHOH group and its trailing CH2 spacer.
@@ -344,23 +294,23 @@ def step9_extract_pva_monomer_charges(mol2_file: str):
 
     pva_atoms = choh_atoms + ch2_atoms
     _validate_atom_count("PVA monomer", len(pva_atoms), PVA_ATOMS_PER_MONOMER)
-    
+
     pva_charges = []
     original_charges = []
-    
+
     # Select PVA atoms
     pva_selection = " or ".join([f"name {name}" for name in pva_atoms])
     pva_mol_atoms = mol2.select_atoms(pva_selection)
-    
+
     # Check if we found all atoms
     if len(pva_mol_atoms) != len(pva_atoms):
         raise RuntimeError(
             f"PVA monomer extraction mismatch: expected {len(pva_atoms)} named atoms, "
             f"found {len(pva_mol_atoms)}. Available atoms: {list(pva_mol_atoms.names)}"
         )
-    
+
     # Get charges for all atoms
-    
+
     for atom_name in pva_atoms:
         matching_atoms = pva_mol_atoms[pva_mol_atoms.names == atom_name]
         if len(matching_atoms) > 0:
@@ -371,7 +321,7 @@ def step9_extract_pva_monomer_charges(mol2_file: str):
         else:
             pva_charges.append(0.0)
             original_charges.append(0.0)
-    
+
     # Calculate charge correction to make net charge zero. The monomer has a
     # single CH2 spacer carbon (C9); the full correction is applied there,
     # leaving the CHOH group's charges untouched.
@@ -380,7 +330,7 @@ def step9_extract_pva_monomer_charges(mol2_file: str):
         correction = -net_charge  # Full correction on the single CH2 carbon
         # Apply correction to C9 (index 4 in pva_charges: 4 CHOH atoms, then C9)
         pva_charges[4] += correction  # C9
-    
+
     # Display charges
     if abs(net_charge) > 1e-6:
         print("PVA_MONOMER CHARGES (CORRECTED)")
@@ -389,7 +339,7 @@ def step9_extract_pva_monomer_charges(mol2_file: str):
     print("="*50)
     print(f"{'Atom':<8} {'Charge':>12} {'Corrected':>12}")
     print("-"*50)
-    
+
     print("\nCHOH GROUP:")
     for i, atom_name in enumerate(choh_atoms):
         original = original_charges[i]
@@ -403,13 +353,13 @@ def step9_extract_pva_monomer_charges(mol2_file: str):
         corrected = pva_charges[i+4]
         star = "*" if corrected != original else " "
         print(f"{atom_name:<8} {original:12.6f} {corrected:12.6f}{star}")
-    
+
     print("-"*50)
     print(f"{'SUM':<8} {np.sum(original_charges):12.6f} {np.sum(pva_charges):12.6f}")
     if abs(net_charge) > 1e-6:
         print("* = corrected charge")
     print("="*50 + "\n")
-    
+
     # Write to file with grouped structure format
     with open('PVA_monomercharges.txt', 'w') as f:
         if abs(net_charge) > 1e-6:
@@ -419,7 +369,7 @@ def step9_extract_pva_monomer_charges(mol2_file: str):
         f.write("="*50 + "\n")
         f.write(f"{'Atom':<8} {'Type':<8} {'Charge':>12} {'Corrected':>12}\n")
         f.write("-"*60 + "\n")
-        
+
         f.write("\nCHOH GROUP:\n")
         for i, atom_name in enumerate(choh_atoms):
             original = original_charges[i]
@@ -435,13 +385,13 @@ def step9_extract_pva_monomer_charges(mol2_file: str):
             star = "*" if corrected != original else " "
             atom = pva_mol_atoms[pva_mol_atoms.names == atom_name][0]
             f.write(f"{atom_name:<8} {atom.type:<8} {original:12.6f} {corrected:12.6f}{star}\n")
-        
+
         f.write("-"*60 + "\n")
         f.write(f"{'SUM':<8} {'':<8} {np.sum(original_charges):12.6f} {np.sum(pva_charges):12.6f}\n")
         if abs(net_charge) > 0.0001:
             f.write("* = corrected charge\n")
         f.write("="*50 + "\n")
-    
+
     print("PVA_monomercharges.txt file generated")
     return pva_charges
 
@@ -462,10 +412,7 @@ def main():
         # Step 4: Run antechamber
         mol2_file = step4_run_antechamber(minimized_pdb)
         
-        # Step 5: Extract PVA terminal group charges
-        step5_extract_pva_terminal_group_charges(mol2_file)
-        
-        # Step 6: Extract glutaraldehyde charges
+        # Step 5: Extract glutaraldehyde charges
         charges = step6_extract_glutaraldehyde_charges(mol2_file)
         
         print(f"\n=== CROSSLINKED STRUCTURE PROCESSING COMPLETE ===")
@@ -481,6 +428,7 @@ def main():
         
         # Step 9: Extract PVA monomer charges
         pva_charges = step9_extract_pva_monomer_charges(pva_mol2_file)
+        write_pva_leading_ch2_charges(pva_charges)
         
         print(f"\n=== PVA MONOMER PROCESSING COMPLETE ===")
         print(f"Processed {len(pva_charges)} PVA monomer atoms")
