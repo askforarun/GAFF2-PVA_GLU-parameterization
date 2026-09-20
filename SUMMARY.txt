@@ -257,7 +257,7 @@ Reference:
 
 For PVA specifically:
   - Atom types: c3 (sp3 carbon), oh (hydroxyl oxygen), hc (alkane hydrogen)
-  - Hand-corrected from Antechamber defaults (ha→hc, c2→c3)
+  - Atom-type replacements applied to Antechamber defaults (ha→hc, c2→c3)
   - Parametrization includes standard C-C, C-O, C-H bonds
   - Dihedral corrections ensure proper rotamer barriers
 

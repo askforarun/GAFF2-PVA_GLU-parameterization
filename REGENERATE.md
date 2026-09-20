@@ -5,7 +5,7 @@ repeat as an alternating `-CH2-CHOH-` backbone with one hydroxyl per two
 backbone carbons. See `pva_builder.py`'s module docstring for the structure
 and atom ordering used by the current workflow.
 
-Generated/parametrized files should be regenerated from the current builder
+Generated/parametrized files can be regenerated from the current builder
 before production use. This includes:
 
 - `combined_pva17.pdb`, `combined_pva21.pdb`, `combined_pva25.pdb`
@@ -13,17 +13,13 @@ before production use. This includes:
 - `pva17_glu.lammps`, `pva17_glu_parm.lammps`
 - `charge_data/PVA7.pdb`, `charge_data/PVA7_min.pdb`, `charge_data/PVA7_min.mol2`
 - `charge_data/glutaraldehyde*.{pdb,mol2,top,crd,frcmod}` and
-  `charge_data/crosslinked_struct*.{pdb,mol2}` (the GLU/junction chemistry
-  itself was already correct and unchanged, but these files were
-  parametrized alongside the old PVA structure and should be regenerated
-  for consistency)
+  `charge_data/crosslinked_struct*.{pdb,mol2}`
 - Antechamber scratch files (`ANTECHAMBER*`, `ATOMTYPE.INF`)
 
-**Not removed** (already corrected in place this session, still valid):
-- `charge_data/PVA_monomercharges.txt` — regenerated from the new 7-atom
+**Reference charge files**:
+- `charge_data/PVA_monomercharges.txt` — charges for the 7-atom
   `CHOH-CH2` monomer definition (`PVA_ATOMS_PER_MONOMER = 7`)
-- `charge_data/glutaraldehyde_charges.txt` — junction chemistry was already
-  correct; charges unchanged
+- `charge_data/glutaraldehyde_charges.txt` — charges for the GLU reference
 
 ## To regenerate
 

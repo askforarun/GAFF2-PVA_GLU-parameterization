@@ -3,7 +3,7 @@
 
 The script is intentionally explicit so manuscript systems can be regenerated
 with a chosen PVA chain length and molecule counts. It builds and parametrizes
-PVA, parametrizes the GLU reference, writes corrected ``*_mod`` MOL2/FRCMOD/TOP
+PVA, parametrizes the GLU reference, writes ``*_mod`` MOL2/FRCMOD/TOP
 files, loads the pre-extracted charge array, and optionally converts a combined
 PDB to LAMMPS format.
 """
@@ -68,7 +68,7 @@ def run_checked(command: list[str]) -> None:
 
 
 def apply_atom_type_corrections(input_mol2: Path, output_mol2: Path, replacements: dict[str, str]) -> None:
-    """Write a corrected MOL2 file using the same replacements as genhydrogel.py."""
+    """Write a modified MOL2 file using the same atom-type replacements as genhydrogel.py."""
     content = input_mol2.read_text()
     for old, new in replacements.items():
         content = content.replace(old, new)
@@ -76,12 +76,12 @@ def apply_atom_type_corrections(input_mol2: Path, output_mol2: Path, replacement
 
 
 def run_parmchk2(mol2_file: Path, frcmod_file: Path) -> None:
-    """Generate an FRCMOD file from a corrected MOL2 file."""
+    """Generate an FRCMOD file from a modified MOL2 file."""
     run_checked(["parmchk2", "-i", str(mol2_file), "-o", str(frcmod_file), "-f", "mol2", "-a", "Y"])
 
 
 def run_tleap_for_modified_mol2(base: Path) -> None:
-    """Generate AMBER topology and coordinates for a corrected MOL2/FRCMOD pair."""
+    """Generate AMBER topology and coordinates for a modified MOL2/FRCMOD pair."""
     tleap_input = Path(f"tleap_{base.name}.in")
     tleap_input.write_text(
         "\n".join(
@@ -99,7 +99,7 @@ def run_tleap_for_modified_mol2(base: Path) -> None:
 
 
 def parameterize_and_correct_pva(chain_length: int) -> tuple[Path, Path]:
-    """Build, parameterize, and write corrected PVA files."""
+    """Build, parameterize, and write PVA files."""
     pva_pdb = Path(f"PVA{chain_length}_trim.pdb")
     atoms, bonds = build_pva(n=chain_length, output_file=str(pva_pdb), cap=False)
     print(f"Built {pva_pdb} with {len(atoms)} atoms and {sum(len(b) for b in bonds.values()) // 2} bonds")
@@ -118,7 +118,7 @@ def parameterize_and_correct_pva(chain_length: int) -> tuple[Path, Path]:
 
 
 def parameterize_and_correct_glu() -> Path:
-    """Parameterize the GLU reference and write corrected GLU files."""
+    """Parameterize the GLU reference and write GLU files."""
     glu_pdb = Path("charge_data/glutaraldehyde.pdb")
     if not glu_pdb.exists():
         raise FileNotFoundError(f"Missing GLU reference structure: {glu_pdb}")
@@ -185,10 +185,10 @@ def main() -> bool:
     print(f"  Combined PDB:    {args.combined_pdb or 'not provided'}")
 
     try:
-        print("\nSTEP 1-2: Build and parameterize corrected PVA")
+        print("\nSTEP 1-2: Build and parameterize PVA")
         pva_pdb, pva_mod_base = parameterize_and_correct_pva(args.chain_length)
 
-        print("\nSTEP 3: Parameterize corrected GLU reference")
+        print("\nSTEP 3: Parameterize GLU reference")
         glu_mod_base = parameterize_and_correct_glu()
 
         print("\nSTEP 4: Load pre-extracted partial charges")
@@ -204,7 +204,7 @@ def main() -> bool:
         print(f"  GLU atoms: {glu_total_atoms}")
         print(f"  Net charge: {sum(charges):.5f}")
 
-        print("\nGenerated corrected topology inputs:")
+        print("\nGenerated topology inputs:")
         print(f"  PVA PDB:        {pva_pdb}")
         print(f"  PVA MOL2:       {pva_mod_base.with_suffix('.mol2')}")
         print(f"  PVA FRCMOD:     {pva_mod_base.with_suffix('.frcmod')}")

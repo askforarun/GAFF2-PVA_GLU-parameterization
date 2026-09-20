@@ -1,15 +1,15 @@
 # Example PDB files
 
-This directory contains generated example PDB files for the corrected PVA--GLU workflow.
+This directory contains generated example files for the PVA--GLU workflow.
 
 Single-chain PVA examples:
 - `PVA7_trim.pdb`: uncapped PVA strand with `n = 7`.
-- `PVA17_trim.{pdb,mol2,frcmod,top,crd}`: uncapped PVA strand with `n = 17`; the corrected no-cap strand contains 122 atoms.
-- `PVA21_trim.{pdb,mol2,frcmod,top,crd}`: uncapped PVA strand with `n = 21`; the corrected no-cap strand contains 150 atoms.
-- `PVA25_trim.{pdb,mol2,frcmod,top,crd}`: uncapped PVA strand with `n = 25`; the corrected no-cap strand contains 178 atoms.
+- `PVA17_trim.{pdb,mol2,frcmod,top,crd}`: uncapped PVA strand with `n = 17`; the no-cap strand contains 122 atoms.
+- `PVA21_trim.{pdb,mol2,frcmod,top,crd}`: uncapped PVA strand with `n = 21`; the no-cap strand contains 150 atoms.
+- `PVA25_trim.{pdb,mol2,frcmod,top,crd}`: uncapped PVA strand with `n = 25`; the no-cap strand contains 178 atoms.
 
 The `*_trim` files are no-cap/reactive-strand examples used before
-crosslinking. Their atom counts follow the corrected fully hydrolyzed PVA
+crosslinking. Their atom counts follow the fully hydrolyzed PVA
 repeat, `CH2-CH(OH)`, with terminal methyl caps removed for reaction with GLU.
 
 Representative Packmol combined-system examples:

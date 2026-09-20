@@ -134,7 +134,7 @@ After running the 3 steps:
 - Numpy array of partial charges
 
 ### Integration Points
-- **Full hydrogel workflow:** Standalone generator for the corrected PVA--GLU starting structures used by the hydrogel simulation workflow
+- **Full hydrogel workflow:** Standalone generator for PVA--GLU starting structures used by the hydrogel simulation workflow
 - **LAMMPS simulations:** Convert to LAMMPS format with `amber_to_lammps.py`
 - **GROMACS:** Further conversion to GROMACS topology
 

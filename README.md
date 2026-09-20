@@ -1,7 +1,7 @@
 # GAFF2 PVA-GLU Parameterization
 
 This repository is a standalone starting-structure and parameterization workflow
-for the corrected PVA--GLU systems used by the current hydrogel simulation
+for PVA--GLU systems used by the current hydrogel simulation
 workflow. It builds fully hydrolyzed PVA strand building blocks, prepares the
 GLU (glutaraldehyde) junction/crosslinker reference, generates AMBER/GAFF2
 parameters with AmberTools, loads pre-extracted reference charges, and can
@@ -27,7 +27,7 @@ python example_parametrization.py
 ```
 
 This runs the manuscript-oriented PVA-GLU parametrization example for one
-selected chain length, including corrected `_mod` topology inputs and optional
+selected chain length, including `_mod` topology inputs and optional
 LAMMPS conversion when a combined PDB is provided.
 
 ## Workflow Overview
@@ -75,14 +75,14 @@ python example_parametrization.py --chain-length 25 --n-pva 300 --n-glu 150
 ```
 
 For each run, the script builds `PVA{n}_trim.pdb` in the working directory,
-writes corrected `PVA{n}_trim_mod.*` files, parametrizes the GLU reference,
-writes corrected `charge_data/glutaraldehyde_mod.*` files, and loads the
+writes `PVA{n}_trim_mod.*` files, parametrizes the GLU reference,
+writes `charge_data/glutaraldehyde_mod.*` files, and loads the
 corresponding charge array for the requested `--n-pva` and `--n-glu`. Generated
 reference PVA trim PDBs are also provided in `examples/`.
 
 LAMMPS conversion is optional because it requires a combined PDB with molecules
 in the same order as the topology/count inputs. Representative packed systems
-from the current corrected workflow are included in `examples/` as:
+from the current workflow are included in `examples/` as:
 
 - `examples/packed_system_pva17_glu150.pdb` - `n=17`, `n_pva=300`, `n_glu=150`, 41,250 atoms
 - `examples/packed_system_pva21_glu150.pdb` - `n=21`, `n_pva=300`, `n_glu=150`, 49,650 atoms
@@ -171,9 +171,9 @@ Install only the optional tools you need for your workflow.
 The `charge_data/` directory stores reference structures and pre-extracted
 charges used by the workflow:
 
-- `PVA_monomercharges.txt` - corrected charges for one PVA repeat unit
+- `PVA_monomercharges.txt` - charges for one PVA repeat unit
 - `PVA_terminal_group_charges.txt` - terminal group charge reference
-- `glutaraldehyde_charges.txt` - corrected charges for the GLU crosslinker
+- `glutaraldehyde_charges.txt` - charges for the GLU crosslinker
 - `PVA7_min.pdb` and `PVA7_min.mol2` - minimized PVA reference data
 - `glutaraldehyde.pdb` - unsaturated tetrafunctional GLU crosslinker structure
   derived from `charge_data/crosslinked_struct_min.mol2`
