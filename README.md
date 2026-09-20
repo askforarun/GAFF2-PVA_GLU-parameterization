@@ -97,7 +97,12 @@ You can also generate your own combined PDB with Packmol. Use the same molecule
 counts and ordering that you pass to `amber_to_lammps.py`, otherwise the atom
 count and topology checks will fail.
 
-The atom counts follow:
+The atom counts follow from the uncapped PVA strand examples and the GLU
+reference molecule. The no-cap PVA files represent reactive strands after the
+terminal methyl caps have been removed: `PVA17_trim.*` contains 122 atoms per
+strand, `PVA21_trim.*` contains 150 atoms per strand, and `PVA25_trim.*`
+contains 178 atoms per strand. The GLU reference contributes 31 atoms per
+molecule. Thus:
 
 - `n=17`: `300 * 122 + 150 * 31 = 41,250`
 - `n=21`: `300 * 150 + 150 * 31 = 49,650`
