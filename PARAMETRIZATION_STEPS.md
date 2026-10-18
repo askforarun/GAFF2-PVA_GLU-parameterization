@@ -47,7 +47,7 @@
 └─────────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────────┐
-│        STEP 3: ASSIGN PRE-EXTRACTED PARTIAL CHARGES                 │
+│        STEP 3: LOAD PRE-EXTRACTED PARTIAL CHARGES                   │
 │                                                                      │
 │  Module: molecular_utils.py                                         │
 │  Function: load_system_charges(chain_length, n_pva, n_glu)          │
@@ -58,8 +58,8 @@
 │    - charge_data/glutaraldehyde_charges.txt  (from GLU ref)         │
 │                                                                      │
 │  Process:                                                            │
-│    1. Load charges for 1 PVA monomer (10 atoms)                     │
-│    2. Tile charges across all n_pva chains                          │
+│    1. Load repeat (7 atoms) and terminal CH2 (3 atoms) charges     │
+│    2. Assemble neutral strand charges, then tile n_pva chains     │
 │    3. Load charges for all n_glu molecules                          │
 │    4. Return concatenated 1-D numpy array                           │
 │                                                                      │
@@ -211,37 +211,34 @@ X  c3 c3  X      1    0.1556 180.0 -2.0
 **Reference Data:**
 ```
 charge_data/
-├── PVA_monomercharges.txt     ← Charges for 1 PVA monomer (10 atoms)
+├── PVA_monomercharges.txt     ← Charges for 1 CHOH-CH2 repeat (7 atoms)
+├── PVA_terminal_group_charges.txt ← Equivalent terminal CH2 charges (3 atoms)
 ├── glutaraldehyde_charges.txt ← Charges for GLU (1 molecule)
 ├── PVA7_min.pdb               ← Source: minimized PVA reference
 └── glutaraldehyde.pdb         ← Source: minimized GLU reference
 ```
 
-**Format of Charge File (PVA_monomercharges.txt):**
+**Reference repeat charges (PVA_monomercharges.txt):**
 ```
 Atom  Type  OrigCharge  CorrectedCharge
-C1    c3    0.098       0.100
-H1    hc   -0.023      -0.025
-H2    hc   -0.023      -0.025
-C2    c3   -0.052      -0.050
-H3    hc    0.045       0.045
-O1    oh   -0.532      -0.535
-HO    ho    0.410       0.410
-C3    c3   -0.052      -0.050
-H4    hc    0.045       0.045
-H5    hc    0.045       0.045
+C8    c3     0.149100    0.149100
+H15   h1     0.036700    0.036700
+O4    oh    -0.625800   -0.625800
+H16   ho     0.426000    0.426000
+C9    c3    -0.133900   -0.110400
+H17   hc     0.062200    0.062200
+H18   hc     0.062200    0.062200
 ```
 
 **Charge Array Construction:**
 ```python
 charges = load_system_charges(chain_length=7, n_pva=3, n_glu=1)
 
-# Returns:
-# [ pva_monomer_charges (7 atoms) × 7 monomers,  ← for PVA chain 1
-#   pva_monomer_charges (7 atoms) × 7 monomers,  ← for PVA chain 2
-#   pva_monomer_charges (7 atoms) × 7 monomers,  ← for PVA chain 3
-#   glutaraldehyde_charges (31 atoms) ]            ← for GLU molecule
-# Total: (7×7×3) + 31 = 178 atoms
+# Each strand: terminal CH2 + (CHOH + interior CH2)*(n-1)
+#              + CHOH + terminal CH2.
+# Both terminal CH2 groups use the same corrected terminal-charge pattern.
+# PVA strands precede GLU junctions in the returned array.
+# Total: 3*(7*7 + 3) + 31 = 187 atoms.
 ```
 
 **Why Pre-Extracted?**
@@ -324,5 +321,10 @@ print(f'✓ Step 3 complete: {len(charges)} charges loaded')
 
 - **Step 1 geometry is NOT minimized**: Hard-coded scaffold; relaxation happens later in LAMMPS
 - **Step 2 generates parameters but uses Antechamber charges**: These may differ from pre-minimized reference
-- **Step 3 replaces charges with pre-extracted values**: Ensures consistency across workflow
-- **All three steps are required** for a complete, chemically consistent parametrized PVA system
+- **Step 3 loads the reference charge array**: Loading does not modify the
+  generated AMBER topologies or automatically inject charges into converted
+  LAMMPS data. The example reports this array; the full hydrogel construction
+  workflow applies it separately in the matching atom order.
+- **Conversion net-charge targets are separate**: `charges_target=[0, 0]`
+  specifies molecular net-charge targets, not the reference per-atom array.
+  Preserve this distinction when preparing inputs for production.

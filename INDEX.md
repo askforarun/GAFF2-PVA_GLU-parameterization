@@ -113,7 +113,7 @@ python example_parametrization.py
 ```
 ✓ Step 1: Built PVA7_trim.pdb (52 atoms)
 ✓ Step 2: Generated PVA7_trim.mol2, .frcmod, .top, .crd
-✓ Step 3: Loaded 129 pre-extracted charges
+✓ Step 3: Loaded 135 pre-extracted charges (n=7, two PVA strands, one GLU)
 ```
 
 ---

@@ -1,5 +1,8 @@
 __pycache__/
 *.pyc
+examples/packed_system_pva17_glu1350.pdb
+examples/packed_system_pva21_glu1050.pdb
+examples/packed_system_pva25_glu900.pdb
 
 # Generated/scratch outputs from running the parametrization pipeline.
 # These are build products of pva_builder.py / molecular_utils.py /

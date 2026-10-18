@@ -30,12 +30,12 @@ if current_dir != 'charge_data':
 
 print("✓ Running from charge_data folder - OK")
 
-# Import cleanup function from main hydrogel package
+# Import helpers from this standalone repository.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.file_operations import cleanup_beginning, cleanup_end
-from src.molecular_utils import generate_monomer_from_smiles
-from src.pva_builder import build_pva
-from src.system_constants import (
+from file_operations import cleanup_beginning, cleanup_end
+from molecular_utils import generate_monomer_from_smiles
+from pva_builder import build_pva
+from system_constants import (
     GLU_ATOMS_PER_MOLECULE,
     PVA_ATOMS_PER_MONOMER,
     PVA_LEADING_CH2_ATOMS,

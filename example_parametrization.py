@@ -21,7 +21,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from molecular_utils import getfiles, load_system_charges, run_tleap_with_error_check
 from pva_builder import build_pva
-from system_constants import GLU_ATOMS_PER_MOLECULE, PVA_ATOMS_PER_MONOMER
+from system_constants import GLU_ATOMS_PER_MOLECULE, pva_atoms_per_chain
 
 
 def parse_args() -> argparse.Namespace:
@@ -197,8 +197,10 @@ def main() -> bool:
             n_pva=args.n_pva,
             n_glu=args.n_glu,
         )
-        pva_total_atoms = args.chain_length * PVA_ATOMS_PER_MONOMER * args.n_pva
+        pva_total_atoms = pva_atoms_per_chain(args.chain_length) * args.n_pva
         glu_total_atoms = args.n_glu * GLU_ATOMS_PER_MOLECULE
+        if len(charges) != pva_total_atoms + glu_total_atoms:
+            raise ValueError("Charge-array length does not match the system atom count")
         print(f"Loaded {len(charges)} charges")
         print(f"  PVA atoms: {pva_total_atoms}")
         print(f"  GLU atoms: {glu_total_atoms}")

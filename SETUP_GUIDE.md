@@ -135,7 +135,7 @@ charges = load_system_charges(
     n_glu=1           # 1 GLU molecule
 )
 
-# Returns: numpy array of shape (129,)
+# Returns: numpy array of shape (135,) = 2*(7*7 + 3) + 31
 # Layout: [pva1_charges, pva2_charges, glu_charges]
 ```
 
@@ -172,7 +172,7 @@ from molecular_utils import load_system_charges
 
 # Load for 3 chains (25 monomers) + 2 GLU molecules
 charges = load_system_charges(chain_length=25, n_pva=3, n_glu=2)
-print(f"Total charges: {len(charges)}")  # (25*7*3) + (2*31) = 587
+print(f"Total charges: {len(charges)}")  # 3*(25*7 + 3) + 2*31 = 596
 ```
 
 ### Task 3: Check Charge Neutrality
@@ -248,7 +248,7 @@ After parametrization, you can:
 
 2. **Convert to LAMMPS** (using `amber_to_lammps.py`)
    ```python
-   from src.amber_to_lammps import amber2lammps
+   from amber_to_lammps import amber2lammps
    amber2lammps(
        data_file="data.lammps",
        param_file="parm.lammps",

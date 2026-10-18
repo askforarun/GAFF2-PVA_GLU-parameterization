@@ -1,5 +1,11 @@
 # Regenerating parametrization outputs
 
+The uncompressed `glu150` examples use 300 PVA strands and 150 GLU junctions.
+They are small demonstrations. Compressed packed inputs for the current
+production counts are also provided in `examples/`; decompress them before
+conversion. See the main README and `examples/README.md` for counts and
+provenance. Parameterizing building blocks alone does not create a production network.
+
 `pva_builder.py` and `system_constants.py` define the fully hydrolyzed PVA
 repeat as an alternating `-CH2-CHOH-` backbone with one hydroxyl per two
 backbone carbons. See `pva_builder.py`'s module docstring for the structure

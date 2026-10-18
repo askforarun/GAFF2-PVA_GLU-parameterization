@@ -8,11 +8,19 @@ parameters with AmberTools, loads pre-extracted reference charges, and can
 convert combined PVA--GLU coordinate files into LAMMPS data/parameter files.
 
 The `examples/` directory contains generated single-chain PVA PDB files and
-representative Packmol combined PVA--GLU PDB inputs for the three manuscript
-strand lengths. The combined PDB files can be used directly with the
-LAMMPS-conversion step.
+small Packmol combined PVA--GLU PDB inputs and compressed production-size
+packed inputs for the three manuscript strand lengths. The combined PDB
+files can be used with the LAMMPS-conversion step at their documented counts;
+decompress `.pdb.gz` files first. None of these packed examples are
+equilibrated or crosslinked networks.
 
 ## Start Here
+
+Standalone regression checks (no parameter generation or simulations):
+
+```bash
+python -m unittest discover -s tests -v
+```
 
 - [INSTALL.md](INSTALL.md) - installation and environment setup
 - [INDEX.md](INDEX.md) - repository map and quick command reference
@@ -30,6 +38,37 @@ This runs the manuscript-oriented PVA-GLU parametrization example for one
 selected chain length, including `_mod` topology inputs and optional
 LAMMPS conversion when a combined PDB is provided.
 
+## Current production-system sizes
+
+The revised hydrogel simulation workflow uses the following counts for each
+of three independently prepared replicas per strand length:
+
+| PVA strand length `n` | PVA strands | GLU junctions | Total atoms |
+|---|---:|---:|---:|
+| 17 | 2700 | 1350 | 371,250 |
+| 21 | 2100 | 1050 | 347,550 |
+| 25 | 1800 | 900 | 348,300 |
+
+Counts follow `n_pva * (7*n + 3) + n_glu * 31`, with `n_pva = 2*n_glu`.
+The parameterization of a building block does not depend on the number of
+molecules in the packed box. To load charge arrays for these system sizes:
+
+```bash
+python example_parametrization.py --chain-length 17 --n-pva 2700 --n-glu 1350
+python example_parametrization.py --chain-length 21 --n-pva 2100 --n-glu 1050
+python example_parametrization.py --chain-length 25 --n-pva 1800 --n-glu 900
+```
+
+These commands do not pack or crosslink a network. Conversion of a production
+box requires a combined PDB with matching counts and atom ordering. Such
+inputs are supplied as `examples/packed_system_pva17_glu1350.pdb.gz`,
+`examples/packed_system_pva21_glu1050.pdb.gz`, and
+`examples/packed_system_pva25_glu900.pdb.gz`; see
+[examples/README.md](examples/README.md) for decompression and provenance.
+The supplied `glu150` examples must not be used with the
+large-system counts. Network construction, crosslinking, and equilibration
+are implemented in the separate hydrogel simulation workflow.
+
 ## Workflow Overview
 
 | Step | Script or function | Input | Output | Notes |
@@ -44,6 +83,11 @@ The GLU crosslinker is treated as a tetrafunctional unsaturated molecule. Its
 structure is obtained from the minimized
 `charge_data/crosslinked_struct_min.mol2` reference and is used as a
 four-branch junction for PVA-GLU network construction.
+Here, GLU denotes the 31-atom model junction building block, not a free
+glutaraldehyde molecule. Its composition and prescribed connectivity are
+model-specific; model GLU weight fraction and crosslinked hydroxyl fraction
+should not be equated directly with experimental glutaraldehyde feed loading
+or measured hydroxyl conversion.
 
 In the full-system `genhydrogel.py` path, `parameterise_molecules()` applies
 manual MOL2 atom-type corrections before regenerating `.frcmod` files: PVA
@@ -66,7 +110,7 @@ python example_parametrization.py --chain-length 17 --n-pva 2 --n-glu 1
 ```
 
 The example is a command-line workflow for one selected chain length. For the
-manuscript systems, run the script separately for each chain length:
+small demonstration systems, run it separately for each chain length:
 
 ```bash
 python example_parametrization.py --chain-length 17 --n-pva 300 --n-glu 150
@@ -82,7 +126,7 @@ reference PVA trim PDBs are also provided in `examples/`.
 
 LAMMPS conversion is optional because it requires a combined PDB with molecules
 in the same order as the topology/count inputs. Representative packed systems
-from the current workflow are included in `examples/` as:
+for the small demonstration systems are included in `examples/` as:
 
 - `examples/packed_system_pva17_glu150.pdb` - `n=17`, `n_pva=300`, `n_glu=150`, 41,250 atoms
 - `examples/packed_system_pva21_glu150.pdb` - `n=21`, `n_pva=300`, `n_glu=150`, 49,650 atoms

@@ -113,7 +113,7 @@ QUICK START
 3. Expected output:
    ✓ Step 1 complete: PVA7_trim.pdb (hard-coded structure)
    ✓ Step 2 complete: PVA7_trim.mol2, .frcmod, .top, .crd (parametrized)
-   ✓ Step 3 complete: Loaded 129 pre-extracted charges
+   ✓ Step 3 complete: Loaded 135 pre-extracted charges (n=7, two strands, one GLU)
 
 ================================================================================
 FILE DEPENDENCY MAP
