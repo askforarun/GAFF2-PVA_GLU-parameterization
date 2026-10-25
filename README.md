@@ -74,20 +74,23 @@ are implemented in the separate hydrogel simulation workflow.
 | Step | Script or function | Input | Output | Notes |
 |------|--------------------|-------|--------|-------|
 | 1. Build PVA | `pva_builder.py`, `build_pva()` | Chain length `n` | `PVA{n}_trim.pdb` | Hard-coded initial geometry; not minimized |
-| 1b. Prepare GLU crosslinker | Reference data | `charge_data/crosslinked_struct_min.mol2` | Unsaturated GLU structure | Tetrafunctional crosslinker used as a four-branch junction |
+| 1b. Prepare GLU crosslinker | Reference data | `charge_data/crosslinked_struct_min.mol2` | Activated tetrafunctional GLU model junction | Model building block used as a four-branch junction |
 | 2. Parametrize | `molecular_utils.py`, `getfiles()` | PDB structure | `.mol2`, `.frcmod`, `.top`, `.crd` | Runs Antechamber, Parmchk2, and tLeap |
 | 3. Load charges | `molecular_utils.py`, `load_system_charges()` | Reference charge files | NumPy charge array | Tiles pre-extracted PVA and GLU charges |
 | 4. Convert to LAMMPS | `amber_to_lammps.py` | AMBER `.top` files and combined PDB | LAMMPS data and parameter files | Optional conversion step for MD simulations |
 
-The GLU crosslinker is treated as a tetrafunctional unsaturated molecule. Its
+The GLU crosslinker is represented by an activated tetrafunctional model junction. Its
 structure is obtained from the minimized
 `charge_data/crosslinked_struct_min.mol2` reference and is used as a
 four-branch junction for PVA-GLU network construction.
 Here, GLU denotes the 31-atom model junction building block, not a free
 glutaraldehyde molecule. Its composition and prescribed connectivity are
-model-specific; model GLU weight fraction and crosslinked hydroxyl fraction
+model-specific; model GLU weight fraction and reactive-site/OH ratio
 should not be equated directly with experimental glutaraldehyde feed loading
 or measured hydroxyl conversion.
+The reactive-site/OH ratio counts prescribed GLU reactive sites relative to
+PVA hydroxyl groups; the model crosslinks are C-C bonds at PVA strand endpoints
+and do not consume hydroxyl groups.
 
 In the full-system `genhydrogel.py` path, `parameterise_molecules()` applies
 manual MOL2 atom-type corrections before regenerating `.frcmod` files: PVA
@@ -219,7 +222,7 @@ charges used by the workflow:
 - `PVA_terminal_group_charges.txt` - terminal group charge reference
 - `glutaraldehyde_charges.txt` - charges for the GLU crosslinker
 - `PVA7_min.pdb` and `PVA7_min.mol2` - minimized PVA reference data
-- `glutaraldehyde.pdb` - unsaturated tetrafunctional GLU crosslinker structure
+- `glutaraldehyde.pdb` - activated tetrafunctional GLU model junction structure
   derived from `charge_data/crosslinked_struct_min.mol2`
 - `glutaraldehyde_mod.mol2` - GLU MOL2 with manual atom-type corrections
   applied (`c2 -> c6`, `h4 -> h1`)
